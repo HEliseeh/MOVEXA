@@ -187,7 +187,7 @@ public class MemberService {
 
         member = memberRepository.saveAndFlush(member);
         // L'id n'existe qu'après l'insertion : le numéro est écrit au commit (entité « managed »).
-        member.setMemberNumber(String.format("A-%04d", member.getId()));
+        member.setMemberNumber("A-%04d".formatted(member.getId()));
 
         Payment payment = null;
         if (plan != null) {

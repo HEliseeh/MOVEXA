@@ -365,11 +365,11 @@ export interface StaffAccount {
   lastModifiedDate: string | null;
 }
 
+/** L'adresse e-mail sert à se connecter (le serveur en fait aussi l'identifiant) */
 export interface CreateStaffPayload {
-  login: string;
   firstName: string;
   lastName: string | null;
-  email: string | null;
+  email: string;
   role: StaffRole;
   password: string;
 }
@@ -377,7 +377,7 @@ export interface CreateStaffPayload {
 export interface UpdateStaffPayload {
   firstName: string;
   lastName: string | null;
-  email: string | null;
+  email: string;
   role: StaffRole;
   activated: boolean;
 }

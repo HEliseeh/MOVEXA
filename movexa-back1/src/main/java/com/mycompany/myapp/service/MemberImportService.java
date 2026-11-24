@@ -87,7 +87,7 @@ public class MemberImportService {
                 }
                 // Mise à jour : seulement si le fichier donne une fin plus lointaine que celle connue.
                 if (plan.isPresent() && row.endDate() != null && (current.getExpiryDate() == null || row.endDate().isAfter(current.getExpiryDate()))) {
-                    subscriptionService.addImported(current, plan.get(), row.endDate(), agent);
+                    subscriptionService.addImported(current, plan.orElseThrow(), row.endDate(), agent);
                 }
                 updated++;
                 lines.add(new ImportLine(row.line(), display, phone, planLabel, row.endDate(), "UPDATED", who + ", mis à jour"));
@@ -102,7 +102,7 @@ public class MemberImportService {
             Member member = createMember(names[0], names[1], phone);
             existing.put(key, member);
             if (plan.isPresent() && row.endDate() != null) {
-                subscriptionService.addImported(member, plan.get(), row.endDate(), agent);
+                subscriptionService.addImported(member, plan.orElseThrow(), row.endDate(), agent);
             }
             imported++;
             lines.add(new ImportLine(row.line(), display, phone, planLabel, row.endDate(), "IMPORTED", note));
@@ -121,14 +121,14 @@ public class MemberImportService {
         member.setUser(user);
         member.setStatus(MemberStatus.ACTIVE);
         member = memberRepository.saveAndFlush(member);
-        member.setMemberNumber(String.format("A-%04d", member.getId()));
+        member.setMemberNumber("A-%04d".formatted(member.getId()));
         return member;
     }
 
     private static String noteFor(ImportRow row, Optional<Plan> plan, LocalDate today) {
         List<String> notes = new ArrayList<>();
         if (StringUtils.hasText(row.planName()) && plan.isEmpty()) notes.add("formule « " + row.planName() + " » non reconnue : importé sans abonnement");
-        else if (plan.isPresent() && !plan.get().getName().equalsIgnoreCase(row.planName().trim())) notes.add("« " + row.planName().trim() + " » lu comme " + plan.get().getName());
+        else if (plan.isPresent() && !plan.orElseThrow().getName().equalsIgnoreCase(row.planName().trim())) notes.add("« " + row.planName().trim() + " » lu comme " + plan.orElseThrow().getName());
         if (plan.isPresent() && row.endDate() == null) notes.add("pas de date de fin : importé sans abonnement");
         if (row.endDate() != null && row.endDate().isBefore(today)) notes.add("sera « expiré »");
         return notes.isEmpty() ? "Prête" : "Prête, " + String.join(", ", notes);

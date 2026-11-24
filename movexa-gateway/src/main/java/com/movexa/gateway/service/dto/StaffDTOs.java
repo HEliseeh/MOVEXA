@@ -1,6 +1,5 @@
 package com.movexa.gateway.service.dto;
 
-import com.movexa.gateway.config.Constants;
 import com.movexa.gateway.security.PasswordPolicy;
 import jakarta.validation.constraints.*;
 import java.time.Instant;
@@ -32,14 +31,14 @@ public final class StaffDTOs {
         Instant lastModifiedDate
     ) {}
 
+    /** On se connecte avec son adresse e-mail : elle est obligatoire et sert aussi d'identifiant. */
     public record CreateStaffRequest(
-        @NotBlank(message = "L'identifiant est obligatoire")
-        @Size(min = 3, max = 50, message = "Identifiant : 3 à 50 caractères")
-        @Pattern(regexp = Constants.LOGIN_REGEX, message = "Identifiant : lettres, chiffres, point, tiret ou soulignement, sans espace")
-        String login,
         @NotBlank(message = "Le prénom est obligatoire") @Size(max = 50) String firstName,
         @Size(max = 50) String lastName,
-        @Email(message = "Adresse e-mail invalide") @Size(max = 254) String email,
+        @NotBlank(message = "L'adresse e-mail est obligatoire : elle sert à se connecter")
+        @Email(message = "Adresse e-mail invalide")
+        @Size(max = 50, message = "Adresse e-mail : 50 caractères maximum")
+        String email,
         @NotNull(message = "Le rôle est obligatoire") StaffRole role,
         @NotBlank(message = "Le mot de passe est obligatoire")
         @Size(min = PASSWORD_MIN, max = PASSWORD_MAX, message = "Mot de passe : 8 caractères minimum")
@@ -49,7 +48,10 @@ public final class StaffDTOs {
     public record UpdateStaffRequest(
         @NotBlank(message = "Le prénom est obligatoire") @Size(max = 50) String firstName,
         @Size(max = 50) String lastName,
-        @Email(message = "Adresse e-mail invalide") @Size(max = 254) String email,
+        @NotBlank(message = "L'adresse e-mail est obligatoire : elle sert à se connecter")
+        @Email(message = "Adresse e-mail invalide")
+        @Size(max = 254)
+        String email,
         @NotNull(message = "Le rôle est obligatoire") StaffRole role,
         boolean activated
     ) {}

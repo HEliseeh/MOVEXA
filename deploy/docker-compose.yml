@@ -69,6 +69,23 @@ services:
       - JWT_BASE64_SECRET=${JWT_BASE64_SECRET:?JWT_BASE64_SECRET manquant dans deploy/.env}
       # Mot de passe du compte admin au premier démarrage (ignoré une fois changé)
       - MOVEXA_ADMIN_INITIAL_PASSWORD=${MOVEXA_ADMIN_INITIAL_PASSWORD:-}
+      # E-mails (« Mot de passe oublié ») : Mailpit par défaut (boîte de test), un vrai SMTP en production
+      - SPRING_MAIL_HOST=${MAIL_HOST:-mailpit}
+      - SPRING_MAIL_PORT=${MAIL_PORT:-1025}
+      - SPRING_MAIL_USERNAME=${MAIL_USERNAME:-}
+      - SPRING_MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=${MAIL_SMTP_AUTH:-false}
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=${MAIL_STARTTLS:-false}
+      - JHIPSTER_MAIL_FROM=${MAIL_FROM:-no-reply@movexa.local}
+      # Adresse publique de l'application : les liens des e-mails pointent vers elle
+      - JHIPSTER_MAIL_BASE_URL=${APP_URL:-http://localhost}
+
+  # Boîte e-mail de test : attrape tous les e-mails envoyés, lisibles sur http://localhost:8025
+  # (accessible seulement depuis cette machine). Inutile en production avec un vrai SMTP.
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "127.0.0.1:8025:8025"
 
   frontend:
     image: movexa-frontend:latest

@@ -18,7 +18,6 @@ function passwordProblem(value: string): string | null {
 
 interface AccountDraft {
   id: number | null;
-  login: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -29,7 +28,6 @@ interface AccountDraft {
 
 const EMPTY_DRAFT: AccountDraft = {
   id: null,
-  login: '',
   firstName: '',
   lastName: '',
   email: '',
@@ -68,8 +66,8 @@ function generatePassword(length = 10): string {
 
 /**
  * Paramètres › Utilisateurs : le gérant crée les comptes de son équipe, choisit le rôle,
- * désactive un compte (départ) et remet un mot de passe (oubli). Aucun e-mail n'est envoyé :
- * le gérant transmet lui-même le mot de passe à la personne.
+ * désactive un compte (départ) et remet un mot de passe. On se connecte avec son adresse e-mail ;
+ * le gérant transmet le premier mot de passe, ensuite « Mot de passe oublié » envoie un lien.
  */
 @Component({
   selector: 'app-staff-accounts',
@@ -158,7 +156,6 @@ export class StaffAccounts implements OnInit {
       a
         ? {
             id: a.id,
-            login: a.login,
             firstName: a.firstName ?? '',
             lastName: a.lastName ?? '',
             email: a.email ?? '',
@@ -198,12 +195,12 @@ export class StaffAccounts implements OnInit {
     const common = {
       firstName: d.firstName.trim(),
       lastName: d.lastName.trim() || null,
-      email: d.email.trim() || null,
+      email: d.email.trim().toLowerCase(),
       role: d.role,
     };
     const request = d.id
       ? this.api.updateStaff(d.id, { ...common, activated: d.activated })
-      : this.api.createStaff({ ...common, login: d.login.trim().toLowerCase(), password: d.password });
+      : this.api.createStaff({ ...common, password: d.password });
 
     this.saving.set(true);
     this.formError.set(null);
@@ -215,7 +212,7 @@ export class StaffAccounts implements OnInit {
         this.toast.success(
           d.id
             ? `Compte de ${this.fullName(saved)} enregistré.`
-            : `Compte créé. Transmettez l’identifiant « ${saved.login} » et le mot de passe à ${this.fullName(saved)}.`,
+            : `Compte créé. ${this.fullName(saved)} se connecte avec « ${saved.email} » et le mot de passe que vous lui transmettez.`,
         );
       },
       error: err => {
@@ -227,14 +224,14 @@ export class StaffAccounts implements OnInit {
 
   private validate(d: AccountDraft): string | null {
     if (!d.firstName.trim()) return 'Le prénom est obligatoire.';
+    const email = d.email.trim();
+    if (!email) return 'L’adresse e-mail est obligatoire : elle sert à se connecter.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Adresse e-mail invalide.';
+    if (!d.id && email.length > 50) return 'Adresse e-mail : 50 caractères maximum.';
     if (!d.id) {
-      const login = d.login.trim();
-      if (login.length < 3) return 'L’identifiant doit faire au moins 3 caractères.';
-      if (!/^[_.@A-Za-z0-9-]+$/.test(login)) return 'Identifiant : lettres, chiffres, point, tiret ou soulignement, sans espace ni accent.';
       const weak = passwordProblem(d.password);
       if (weak) return weak;
     }
-    if (d.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email.trim())) return 'Adresse e-mail invalide.';
     return null;
   }
 

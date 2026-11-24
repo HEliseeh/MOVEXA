@@ -48,7 +48,7 @@ public class CheckInService {
         // Pointage hors ligne renvoyé une seconde fois : on rend le premier, sans doublon.
         if (StringUtils.hasText(request.clientId())) {
             var existing = repository.findOneByClientId(request.clientId());
-            if (existing.isPresent()) return toDto(existing.get(), views.threshold());
+            if (existing.isPresent()) return toDto(existing.orElseThrow(), views.threshold());
         }
 
         Member member;

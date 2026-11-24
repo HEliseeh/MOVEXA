@@ -27,7 +27,8 @@ import reactor.core.scheduler.Schedulers;
 
 /**
  * Comptes du personnel : le gérant crée les comptes, choisit le rôle, désactive un compte
- * et remet un mot de passe. Pas d'e-mail envoyé : le gérant transmet lui-même le mot de passe.
+ * et remet un mot de passe. On se connecte avec son adresse e-mail (obligatoire, unique).
+ * Le gérant transmet lui-même le premier mot de passe ; ensuite « Mot de passe oublié » envoie un lien.
  * <p>
  * Garde-fou : le gérant ne peut ni se désactiver ni se retirer le rôle de gérant. Comme seul un gérant
  * peut appeler ces actions, il reste donc toujours au moins un gérant actif.
@@ -69,15 +70,16 @@ public class StaffService {
     public Mono<StaffAccount> create(CreateStaffRequest req) {
         requireStrong(req.password());
         Set<String> authorities = authoritiesFor(req.role());
-        String login = req.login().trim().toLowerCase(Locale.ROOT);
+        // L'adresse e-mail sert d'identifiant (on se connecte avec elle) : login = e-mail en minuscules
         String email = emailOrNull(req.email());
+        String login = email;
 
         Mono<Void> loginFree = userRepository
             .findOneByLogin(login)
-            .flatMap(u -> Mono.<Void>error(bad("Cet identifiant est déjà utilisé.", "loginexists")));
-        Mono<Void> emailFree = email == null
-            ? Mono.empty()
-            : userRepository.findOneByEmailIgnoreCase(email).flatMap(u -> Mono.<Void>error(bad("Cette adresse e-mail est déjà utilisée.", "emailexists")));
+            .flatMap(u -> Mono.<Void>error(bad("Cette adresse e-mail est déjà utilisée.", "loginexists")));
+        Mono<Void> emailFree = userRepository
+            .findOneByEmailIgnoreCase(email)
+            .flatMap(u -> Mono.<Void>error(bad("Cette adresse e-mail est déjà utilisée.", "emailexists")));
 
         return loginFree
             .then(emailFree)
@@ -112,9 +114,7 @@ public class StaffService {
             if (self && req.role() != StaffRole.MANAGER) {
                 return Mono.error(bad("Vous ne pouvez pas retirer votre propre rôle de gérant.", "selfdemote"));
             }
-            Mono<Void> emailFree = email == null
-                ? Mono.empty()
-                : userRepository
+            Mono<Void> emailFree = userRepository
                     .findOneByEmailIgnoreCase(email)
                     .filter(other -> !other.getId().equals(user.getId()))
                     .flatMap(other -> Mono.<Void>error(bad("Cette adresse e-mail est déjà utilisée.", "emailexists")));

@@ -18,12 +18,12 @@
 
   <div class="sa-list">
     <div class="grid-row grid-row--head">
-      <span>Nom</span><span>Identifiant</span><span>Rôle</span><span>Statut</span><span></span>
+      <span>Nom</span><span>E-mail de connexion</span><span>Rôle</span><span>Statut</span><span></span>
     </div>
     @for (a of visible(); track a.id) {
       <div class="grid-row" [class.sa-row--off]="!a.activated">
         <span class="text-strong">{{ fullName(a) }} @if (isMe(a)) { <span class="sa-me">(vous)</span> }</span>
-        <span class="sa-login">{{ a.login }}</span>
+        <span class="sa-login">{{ a.email || a.login }}</span>
         <span [class.sa-norole]="a.role === 'OTHER'">{{ roleLabels[a.role] }}</span>
         <span class="status"><span class="status-dot" [class.status-dot--success]="a.activated"></span>{{ a.activated ? 'Actif' : 'Désactivé' }}</span>
         <span class="sa-row-actions">
@@ -64,7 +64,6 @@
       <header class="modal-head">
         <div class="modal-head-text">
           <h2 id="sa-title" class="modal-title">{{ d.id ? 'Modifier le compte' : 'Nouveau compte' }}</h2>
-          @if (d.id) { <p class="help">Identifiant : {{ d.login }}</p> }
         </div>
       </header>
       <div class="modal-body">
@@ -81,18 +80,11 @@
           </div>
         </div>
 
-        @if (!d.id) {
-          <div class="field">
-            <label for="sa-login">Identifiant de connexion *</label>
-            <input id="sa-login" name="login" class="input-line" maxlength="50" autocomplete="off" autocapitalize="none" spellcheck="false"
-                   placeholder="Ex. aicha.k" [ngModel]="d.login" (ngModelChange)="patch({ login: $event })" />
-            <span class="help">Sans espace ni accent. Il ne pourra plus être modifié.</span>
-          </div>
-        }
-
         <div class="field">
-          <label for="sa-email">E-mail (facultatif)</label>
-          <input id="sa-email" name="email" class="input-line" type="email" maxlength="254" autocomplete="off" [ngModel]="d.email" (ngModelChange)="patch({ email: $event })" />
+          <label for="sa-email">Adresse e-mail *</label>
+          <input id="sa-email" name="email" class="input-line" type="email" [attr.maxlength]="d.id ? 254 : 50" autocomplete="off" autocapitalize="none" spellcheck="false"
+                 placeholder="Ex. aicha@flexclub.bj" [ngModel]="d.email" (ngModelChange)="patch({ email: $event })" />
+          <span class="help">Sert à se connecter et à recevoir le lien « Mot de passe oublié ». Utilisez une vraie adresse.</span>
         </div>
 
         <div class="field">
@@ -136,7 +128,7 @@
       <header class="modal-head">
         <div class="modal-head-text">
           <h2 id="sa-reset-title" class="modal-title">Nouveau mot de passe</h2>
-          <p class="help">{{ fullName(a) }} · {{ a.login }}</p>
+          <p class="help">{{ fullName(a) }} · {{ a.email || a.login }}</p>
         </div>
       </header>
       <div class="modal-body">

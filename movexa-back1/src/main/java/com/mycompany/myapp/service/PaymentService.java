@@ -238,7 +238,7 @@ public class PaymentService {
         p.setSubscription(sub);
         p.setStatus(PaymentStatus.PAID);
         p.setPaidAt(Instant.now());
-        p.setReceiptNumber(String.format("R-%05d", repository.nextReceiptNumber()));
+        p.setReceiptNumber("R-%05d".formatted(repository.nextReceiptNumber()));
     }
 
     private String paymentUrl(Payment p) {
