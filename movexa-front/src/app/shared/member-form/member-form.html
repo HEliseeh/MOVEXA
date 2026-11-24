@@ -150,7 +150,7 @@
       </div>
 
       <footer class="modal-foot">
-        @if (isEdit()) {
+        @if (isEdit() && store.isManager()) {
           <button type="button" class="mf-delete" [disabled]="saving()" (click)="confirmingDelete.set(true)">Archiver le membre</button>
           <span class="mf-spacer"></span>
         }

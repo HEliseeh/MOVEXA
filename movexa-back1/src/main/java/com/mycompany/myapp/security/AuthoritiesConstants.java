@@ -15,6 +15,9 @@ public final class AuthoritiesConstants {
     /** Expression @PreAuthorize réservant une action au gérant. */
     public static final String IS_MANAGER = "hasAuthority('ROLE_ADMIN')";
 
+    /** Personnel de la salle : gérant ou réceptionniste. Seuls ces rôles accèdent à l'API métier. */
+    public static final String[] STAFF = { ADMIN, RECEPTION };
+
     public static final String ANONYMOUS = "ROLE_ANONYMOUS";
 
     private AuthoritiesConstants() {}

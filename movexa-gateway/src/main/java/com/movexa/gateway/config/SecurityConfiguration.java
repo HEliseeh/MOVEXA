@@ -71,7 +71,8 @@ public class SecurityConfiguration {
                 // prettier-ignore
                 authz
                     .pathMatchers("/api/authenticate").permitAll()
-                    .pathMatchers("/api/register").permitAll()
+                    // Pas d'inscription libre : c'est le gérant qui crée les comptes (Paramètres › Utilisateurs)
+                    .pathMatchers("/api/register").denyAll()
                     .pathMatchers("/api/activate").permitAll()
                     .pathMatchers("/api/account/reset-password/init").permitAll()
                     .pathMatchers("/api/account/reset-password/finish").permitAll()

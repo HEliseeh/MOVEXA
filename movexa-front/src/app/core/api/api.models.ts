@@ -349,13 +349,35 @@ export interface ImportResult {
   lines: ImportLine[];
 }
 
-/** Compte utilisateur du gateway (GET /api/admin/users) */
-export interface GatewayUser {
+/** Rôle d'un compte du personnel. OTHER : compte sans rôle MOVEXA (aucun accès). */
+export type StaffRole = 'MANAGER' | 'RECEPTION' | 'OTHER';
+
+/** Compte du personnel (gateway, GET /api/admin/staff) */
+export interface StaffAccount {
   id: number;
   login: string;
   firstName: string | null;
   lastName: string | null;
   email: string | null;
   activated: boolean;
-  authorities: string[];
+  role: StaffRole;
+  createdDate: string | null;
+  lastModifiedDate: string | null;
+}
+
+export interface CreateStaffPayload {
+  login: string;
+  firstName: string;
+  lastName: string | null;
+  email: string | null;
+  role: StaffRole;
+  password: string;
+}
+
+export interface UpdateStaffPayload {
+  firstName: string;
+  lastName: string | null;
+  email: string | null;
+  role: StaffRole;
+  activated: boolean;
 }

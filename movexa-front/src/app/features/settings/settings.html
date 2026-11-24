@@ -27,30 +27,7 @@
         }
 
         @case ('users') {
-          <section>
-            <h2 class="card-title">Comptes</h2>
-            @if (usersError(); as e) { <p class="help">{{ e }}</p> }
-            <div class="st-users">
-              @for (u of users(); track u.id) {
-                <div class="grid-row">
-                  <span class="text-strong">{{ u.firstName || u.login }} {{ u.lastName || '' }}</span>
-                  <span>{{ u.login }}</span>
-                  <span>{{ roleLabel(u) }}</span>
-                  <span class="status"><span class="status-dot" [class.status-dot--success]="u.activated"></span>{{ u.activated ? 'Actif' : 'Désactivé' }}</span>
-                </div>
-              }
-            </div>
-            <p class="help">Création des comptes réceptionnistes : pas encore disponible depuis cet écran (étape suivante, côté gateway).</p>
-          </section>
-          <section>
-            <h2 class="card-title">Ce que peut faire le réceptionniste</h2>
-            <div class="st-perms">
-              @for (p of permissions; track p[0]) {
-                <div class="grid-row"><span>{{ p[0] }}</span><span [class.text-strong]="p[1] === 'Oui'">{{ p[1] }}</span></div>
-              }
-            </div>
-            <p class="help">Le gérant peut tout faire. Ces règles sont appliquées par le serveur, pas seulement par l’affichage.</p>
-          </section>
+          <app-staff-accounts />
         }
 
         @case ('pay') {

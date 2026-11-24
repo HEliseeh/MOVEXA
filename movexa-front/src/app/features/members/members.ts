@@ -1,3 +1,4 @@
+import { CurrentUserStore } from '@core/auth/current-user.store';
 import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -32,6 +33,8 @@ export class Members implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  /** Import, export : réservés au gérant (données personnelles) */
+  readonly store = inject(CurrentUserStore);
 
   readonly states = Object.keys(STATE_LABELS) as SubscriptionState[];
   readonly stateLabels = STATE_LABELS;
@@ -270,6 +273,7 @@ export class Members implements OnInit {
 
   /** Export CSV (séparateur « ; » et BOM UTF-8 : s'ouvre correctement dans Excel en français) */
   exportCsv(list: MemberDto[] = this.rows(), suffix = ''): void {
+    if (!this.store.isManager()) return;
     const header = ['Numéro', 'Prénom', 'Nom', 'Téléphone', 'E-mail', 'Statut', 'Formule', 'Fin', 'Inscrit le', 'Dernière visite'];
     const lines = list.map(m =>
       [m.memberNumber, m.firstName, m.lastName, m.phone ?? '', m.email ?? '', STATE_LABELS[m.state], m.plan ?? '', frDate(m.expiryDate), frDate(m.joinDate), frDate(m.lastVisitDate)]

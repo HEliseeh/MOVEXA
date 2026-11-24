@@ -35,6 +35,15 @@
       </div>
     }
 
+    @if (user()) {
+      <button type="button" class="topbar-icon-btn" (click)="changingPassword.set(true)" aria-label="Changer mon mot de passe" title="Changer mon mot de passe">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="8" cy="15" r="4" /><path d="M10.8 12.2 20 3M17 6l3 3M15 8l2 2" />
+        </svg>
+      </button>
+    }
+
     <button type="button" class="topbar-icon-btn" (click)="logout()" aria-label="Se déconnecter" title="Se déconnecter">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -44,3 +53,7 @@
   </div>
 
 </header>
+
+@if (changingPassword()) {
+  <app-change-password (closed)="changingPassword.set(false)" />
+}

@@ -1,9 +1,10 @@
-import { Component, computed, inject, input, output } from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
 import { CurrentUserStore } from '@core/auth/current-user.store';
 import { OfflineService } from '@core/offline/offline.service';
 import { Logo } from '@shared/logo/logo';
+import { ChangePassword } from '../change-password/change-password';
 
 /** Libellés affichés sous le nom de l'utilisateur, par ordre de priorité */
 const ROLE_LABELS: [string, string][] = [
@@ -16,7 +17,7 @@ const ROLE_LABELS: [string, string][] = [
 
 @Component({
   selector: 'app-topbar',
-  imports: [Logo],
+  imports: [Logo, ChangePassword],
   templateUrl: './topbar.html',
   styleUrl: './topbar.css',
 })
@@ -35,6 +36,9 @@ export class Topbar {
   readonly version = 'MVP 0.1';
 
   readonly user = this.store.user;
+
+  /** Pop-up « Changer mon mot de passe » */
+  readonly changingPassword = signal(false);
 
   readonly displayName = computed(() => {
     const u = this.user();

@@ -21,6 +21,8 @@ services:
       - SPRING_PROFILES_ACTIVE=prod
       - SPRING_SECURITY_USER_PASSWORD=${REGISTRY_PASSWORD}
       - JHIPSTER_REGISTRY_PASSWORD=${REGISTRY_PASSWORD}
+      # Clé JWT : le fichier central-config la référence, donc on la fournit partout
+      - JWT_BASE64_SECRET=${JWT_BASE64_SECRET:?JWT_BASE64_SECRET manquant dans deploy/.env}
       - SPRING_CLOUD_CONFIG_SERVER_COMPOSITE_0_TYPE=native
       - SPRING_CLOUD_CONFIG_SERVER_COMPOSITE_0_SEARCH_LOCATIONS=file:./central-config
     volumes:
@@ -43,6 +45,7 @@ services:
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
       - SPRING_LIQUIBASE_URL=jdbc:postgresql://postgres:5432/movexaback1
       - JHIPSTER_CACHE_REDIS_SERVER=redis://redis:6379
+      - JWT_BASE64_SECRET=${JWT_BASE64_SECRET:?JWT_BASE64_SECRET manquant dans deploy/.env}
 
   gateway:
     image: movexa-gateway:latest
@@ -63,6 +66,9 @@ services:
       - SPRING_LIQUIBASE_USER=movexa
       - SPRING_LIQUIBASE_PASSWORD=${DB_PASSWORD}
       - JHIPSTER_CACHE_REDIS_SERVER=redis://redis:6379
+      - JWT_BASE64_SECRET=${JWT_BASE64_SECRET:?JWT_BASE64_SECRET manquant dans deploy/.env}
+      # Mot de passe du compte admin au premier démarrage (ignoré une fois changé)
+      - MOVEXA_ADMIN_INITIAL_PASSWORD=${MOVEXA_ADMIN_INITIAL_PASSWORD:-}
 
   frontend:
     image: movexa-frontend:latest

@@ -8,8 +8,10 @@
     </div>
     <div class="page-actions">
       <a routerLink="/reminders" class="btn btn-outline">Relancer</a>
-      <a routerLink="/members/import" class="btn btn-outline">Importer Excel / CSV</a>
-      <button type="button" class="btn btn-outline" (click)="exportCsv()">Exporter</button>
+      @if (store.isManager()) {
+        <a routerLink="/members/import" class="btn btn-outline">Importer Excel / CSV</a>
+        <button type="button" class="btn btn-outline" (click)="exportCsv()">Exporter</button>
+      }
       <button type="button" class="btn btn-primary" (click)="editing.set(null)">Nouveau membre</button>
     </div>
   </header>
@@ -22,7 +24,9 @@
               [attr.title]="remindable().length ? null : 'Aucun des membres cochés ne peut être relancé'">
         {{ remindable().length === selectedMembers().length ? 'Relancer' : 'Relancer ' + remindable().length + ' sur ' + selectedMembers().length }}
       </button>
-      <button type="button" class="btn btn-outline" (click)="exportCsv(selectedMembers(), '-selection')">Exporter la sélection</button>
+      @if (store.isManager()) {
+        <button type="button" class="btn btn-outline" (click)="exportCsv(selectedMembers(), '-selection')">Exporter la sélection</button>
+      }
       <button type="button" class="link-btn" (click)="clearSelection()">Tout désélectionner</button>
       @if (notRemindable().length) {
         <span class="help selection-note">

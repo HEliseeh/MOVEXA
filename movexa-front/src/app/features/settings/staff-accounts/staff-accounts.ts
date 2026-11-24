@@ -1,0 +1,259 @@
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
+import { StaffAccount, StaffRole } from '@core/api/api.models';
+import { MovexaApi } from '@core/api/movexa-api.service';
+import { CurrentUserStore } from '@core/auth/current-user.store';
+import { ToastService } from '@core/notifications/toast.service';
+import { apiError } from '@shared/format';
+
+const PASSWORD_MIN = 8;
+
+interface AccountDraft {
+  id: number | null;
+  login: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: StaffRole;
+  activated: boolean;
+  password: string;
+}
+
+const EMPTY_DRAFT: AccountDraft = {
+  id: null,
+  login: '',
+  firstName: '',
+  lastName: '',
+  email: '',
+  role: 'RECEPTION',
+  activated: true,
+  password: '',
+};
+
+export const ROLE_LABELS: Record<StaffRole, string> = {
+  MANAGER: 'Gérant',
+  RECEPTION: 'Réceptionniste',
+  OTHER: 'Aucun rôle (pas d’accès)',
+};
+
+/** Mot de passe facile à dicter : pas de 0/O, 1/l/I. */
+function generatePassword(length = 10): string {
+  const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const values = new Uint32Array(length);
+  crypto.getRandomValues(values);
+  return Array.from(values, v => chars[v % chars.length]).join('');
+}
+
+/**
+ * Paramètres › Utilisateurs : le gérant crée les comptes de son équipe, choisit le rôle,
+ * désactive un compte (départ) et remet un mot de passe (oubli). Aucun e-mail n'est envoyé :
+ * le gérant transmet lui-même le mot de passe à la personne.
+ */
+@Component({
+  selector: 'app-staff-accounts',
+  imports: [FormsModule],
+  templateUrl: './staff-accounts.html',
+  styleUrl: './staff-accounts.css',
+})
+export class StaffAccounts implements OnInit {
+  private readonly api = inject(MovexaApi);
+  private readonly toast = inject(ToastService);
+  private readonly store = inject(CurrentUserStore);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly roleLabels = ROLE_LABELS;
+  readonly passwordMin = PASSWORD_MIN;
+
+  /** Ce que peut faire chaque rôle (règles appliquées par le serveur) */
+  readonly permissions: [string, string, string][] = [
+    ['Inscrire et modifier un membre', 'Oui', 'Oui'],
+    ['Encaisser, pointer une entrée, relancer', 'Oui', 'Oui'],
+    ['Clôturer la caisse du jour', 'Oui', 'Oui'],
+    ['Archiver un membre', 'Non', 'Oui'],
+    ['Importer ou exporter la liste des membres', 'Non', 'Oui'],
+    ['Annuler ou confirmer un paiement', 'Non', 'Oui'],
+    ['Tableau de bord et chiffre d’affaires', 'Non', 'Oui'],
+    ['Formules, coachs, paramètres, comptes', 'Non', 'Oui'],
+  ];
+
+  readonly accounts = signal<StaffAccount[]>([]);
+  readonly loading = signal(true);
+  readonly loadError = signal<string | null>(null);
+  readonly showInactive = signal(false);
+
+  readonly draft = signal<AccountDraft | null>(null);
+  readonly formError = signal<string | null>(null);
+  readonly saving = signal(false);
+
+  readonly resetting = signal<StaffAccount | null>(null);
+  readonly newPassword = signal('');
+
+  readonly myLogin = computed(() => this.store.user()?.login ?? '');
+  readonly inactiveCount = computed(() => this.accounts().filter(a => !a.activated).length);
+  readonly visible = computed(() => {
+    const order: Record<StaffRole, number> = { MANAGER: 0, RECEPTION: 1, OTHER: 2 };
+    return this.accounts()
+      .filter(a => this.showInactive() || a.activated)
+      .sort((a, b) => Number(b.activated) - Number(a.activated) || order[a.role] - order[b.role] || a.login.localeCompare(b.login));
+  });
+  readonly isSelf = computed(() => {
+    const d = this.draft();
+    return !!d?.id && this.accounts().some(a => a.id === d.id && a.login === this.myLogin());
+  });
+
+  ngOnInit(): void {
+    this.load();
+  }
+
+  load(): void {
+    this.loading.set(true);
+    this.api.staff().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: list => {
+        this.accounts.set(list);
+        this.loading.set(false);
+        this.loadError.set(null);
+      },
+      error: err => {
+        this.loading.set(false);
+        this.loadError.set(apiError(err, 'Liste des comptes indisponible.'));
+      },
+    });
+  }
+
+  fullName(a: StaffAccount): string {
+    return [a.firstName, a.lastName].filter(Boolean).join(' ') || a.login;
+  }
+
+  isMe(a: StaffAccount): boolean {
+    return a.login === this.myLogin();
+  }
+
+  // ---- Création / modification ----
+
+  edit(a?: StaffAccount): void {
+    this.formError.set(null);
+    this.draft.set(
+      a
+        ? {
+            id: a.id,
+            login: a.login,
+            firstName: a.firstName ?? '',
+            lastName: a.lastName ?? '',
+            email: a.email ?? '',
+            // Un compte sans rôle MOVEXA reçoit « Réceptionniste » par défaut s'il est modifié
+            role: a.role === 'OTHER' ? 'RECEPTION' : a.role,
+            activated: a.activated,
+            password: '',
+          }
+        : { ...EMPTY_DRAFT, password: generatePassword() },
+    );
+  }
+
+  patch(p: Partial<AccountDraft>): void {
+    this.draft.update(d => (d ? { ...d, ...p } : d));
+  }
+
+  regenerate(): void {
+    this.patch({ password: generatePassword() });
+  }
+
+  regeneratePassword(): string {
+    return generatePassword();
+  }
+
+  close(): void {
+    if (!this.saving()) this.draft.set(null);
+  }
+
+  save(): void {
+    const d = this.draft();
+    if (!d || this.saving()) return;
+    const error = this.validate(d);
+    if (error) {
+      this.formError.set(error);
+      return;
+    }
+    const common = {
+      firstName: d.firstName.trim(),
+      lastName: d.lastName.trim() || null,
+      email: d.email.trim() || null,
+      role: d.role,
+    };
+    const request = d.id
+      ? this.api.updateStaff(d.id, { ...common, activated: d.activated })
+      : this.api.createStaff({ ...common, login: d.login.trim().toLowerCase(), password: d.password });
+
+    this.saving.set(true);
+    this.formError.set(null);
+    request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: saved => {
+        this.saving.set(false);
+        this.draft.set(null);
+        this.accounts.update(list => (d.id ? list.map(a => (a.id === saved.id ? saved : a)) : [...list, saved]));
+        this.toast.success(
+          d.id
+            ? `Compte de ${this.fullName(saved)} enregistré.`
+            : `Compte créé. Transmettez l’identifiant « ${saved.login} » et le mot de passe à ${this.fullName(saved)}.`,
+        );
+      },
+      error: err => {
+        this.saving.set(false);
+        this.formError.set(apiError(err, 'Enregistrement impossible.'));
+      },
+    });
+  }
+
+  private validate(d: AccountDraft): string | null {
+    if (!d.firstName.trim()) return 'Le prénom est obligatoire.';
+    if (!d.id) {
+      const login = d.login.trim();
+      if (login.length < 3) return 'L’identifiant doit faire au moins 3 caractères.';
+      if (!/^[_.@A-Za-z0-9-]+$/.test(login)) return 'Identifiant : lettres, chiffres, point, tiret ou soulignement, sans espace ni accent.';
+      if (d.password.length < PASSWORD_MIN) return `Le mot de passe doit faire au moins ${PASSWORD_MIN} caractères.`;
+    }
+    if (d.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email.trim())) return 'Adresse e-mail invalide.';
+    return null;
+  }
+
+  // ---- Nouveau mot de passe ----
+
+  askReset(a: StaffAccount): void {
+    this.newPassword.set(generatePassword());
+    this.formError.set(null);
+    this.resetting.set(a);
+  }
+
+  closeReset(): void {
+    if (!this.saving()) this.resetting.set(null);
+  }
+
+  confirmReset(): void {
+    const a = this.resetting();
+    const password = this.newPassword();
+    if (!a || this.saving()) return;
+    if (password.length < PASSWORD_MIN) {
+      this.formError.set(`Le mot de passe doit faire au moins ${PASSWORD_MIN} caractères.`);
+      return;
+    }
+    this.saving.set(true);
+    this.api.resetStaffPassword(a.id, password).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.resetting.set(null);
+        this.toast.success(`Nouveau mot de passe enregistré pour ${this.fullName(a)}. Transmettez-le lui.`);
+      },
+      error: err => {
+        this.saving.set(false);
+        this.formError.set(apiError(err, 'Changement impossible.'));
+      },
+    });
+  }
+
+  copy(text: string): void {
+    navigator.clipboard?.writeText(text).then(
+      () => this.toast.success('Copié.'),
+      () => this.toast.error('Copie impossible : notez-le à la main.'),
+    );
+  }
+}

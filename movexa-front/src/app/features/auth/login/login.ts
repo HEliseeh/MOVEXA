@@ -44,6 +44,12 @@ export class Login {
       .subscribe({
         next: () => {
           this.loading.set(false);
+          if (!this.store.isStaff()) {
+            this.auth.logout();
+            this.store.clear();
+            this.errorMessage.set('Ce compte n’a pas accès à MOVEXA. Demandez au gérant de vous attribuer un rôle.');
+            return;
+          }
           this.router.navigate(['/reception']);
         },
         error: (err: HttpErrorResponse) => {
