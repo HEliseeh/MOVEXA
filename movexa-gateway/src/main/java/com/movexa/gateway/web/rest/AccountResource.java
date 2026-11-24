@@ -1,6 +1,7 @@
 package com.movexa.gateway.web.rest;
 
 import com.movexa.gateway.repository.UserRepository;
+import com.movexa.gateway.security.PasswordPolicy;
 import com.movexa.gateway.security.SecurityUtils;
 import com.movexa.gateway.service.MailService;
 import com.movexa.gateway.service.UserService;
@@ -11,7 +12,6 @@ import com.movexa.gateway.web.rest.vm.KeyAndPasswordVM;
 import com.movexa.gateway.web.rest.vm.ManagedUserVM;
 import jakarta.validation.Valid;
 import java.util.Objects;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -57,7 +57,7 @@ public class AccountResource {
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
     public Mono<Void> registerAccount(@Valid @RequestBody ManagedUserVM managedUserVM) {
-        if (isPasswordLengthInvalid(managedUserVM.getPassword())) {
+        if (isPasswordInvalid(managedUserVM.getPassword())) {
             throw new InvalidPasswordException();
         }
         return userService.registerUser(managedUserVM, managedUserVM.getPassword()).doOnSuccess(mailService::sendActivationEmail).then();
@@ -134,7 +134,7 @@ public class AccountResource {
      */
     @PostMapping(path = "/account/change-password")
     public Mono<Void> changePassword(@RequestBody PasswordChangeDTO passwordChangeDto) {
-        if (isPasswordLengthInvalid(passwordChangeDto.getNewPassword())) {
+        if (isPasswordInvalid(passwordChangeDto.getNewPassword())) {
             throw new InvalidPasswordException();
         }
         return userService.changePassword(passwordChangeDto.getCurrentPassword(), passwordChangeDto.getNewPassword());
@@ -170,7 +170,7 @@ public class AccountResource {
      */
     @PostMapping(path = "/account/reset-password/finish")
     public Mono<Void> finishPasswordReset(@RequestBody KeyAndPasswordVM keyAndPassword) {
-        if (isPasswordLengthInvalid(keyAndPassword.getNewPassword())) {
+        if (isPasswordInvalid(keyAndPassword.getNewPassword())) {
             throw new InvalidPasswordException();
         }
         return userService
@@ -179,11 +179,7 @@ public class AccountResource {
             .then();
     }
 
-    private static boolean isPasswordLengthInvalid(String password) {
-        return (
-            StringUtils.isEmpty(password) ||
-            password.length() < ManagedUserVM.PASSWORD_MIN_LENGTH ||
-            password.length() > ManagedUserVM.PASSWORD_MAX_LENGTH
-        );
+    private static boolean isPasswordInvalid(String password) {
+        return !PasswordPolicy.isValid(password);
     }
 }

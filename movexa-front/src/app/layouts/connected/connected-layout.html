@@ -1,21 +1,12 @@
 <!-- ================================================================
      CONNECTED LAYOUT
-     Barre du haut + menu latéral navy + contenu scrollable
+     Menu latéral clair sur toute la hauteur + (barre du haut, contenu)
      ================================================================ -->
 <div class="layout">
-  <app-topbar class="layout-topbar" [menuOpen]="menuOpen()" (menuToggle)="toggleMenu()" />
+  <app-sidebar class="layout-sidenav" [class.layout-sidenav--open]="menuOpen()" />
 
-  <div class="layout-body">
-    <nav
-      id="main-nav"
-      class="layout-sidenav"
-      [class.layout-sidenav--open]="menuOpen()"
-      aria-label="Navigation principale"
-    >
-      @for (item of menuItems(); track item.id) {
-        <app-menu-component [item]="item" />
-      }
-    </nav>
+  <div class="layout-main">
+    <app-topbar class="layout-topbar" [menuOpen]="menuOpen()" (menuToggle)="toggleMenu()" />
 
     <main class="layout-content">
       <router-outlet />

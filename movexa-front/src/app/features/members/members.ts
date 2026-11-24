@@ -11,6 +11,7 @@ import { fcfa, frDate, initials, STATE_LABELS, STATE_TONES, todayIso } from '@sh
 import { PayDialog } from '@shared/pay-dialog/pay-dialog';
 import { QrCode } from '@shared/qr-code/qr-code';
 import { MemberForm } from '@shared/member-form/member-form';
+import { Fab, FabAction } from '@shared/fab/fab';
 
 type SortKey = 'name' | 'end';
 
@@ -21,7 +22,7 @@ type SortKey = 'name' | 'end';
  */
 @Component({
   selector: 'app-members',
-  imports: [FormsModule, RouterLink, MemberForm, PayDialog, QrCode, MultiFilter, DateFilter],
+  imports: [FormsModule, RouterLink, MemberForm, PayDialog, QrCode, MultiFilter, DateFilter, Fab],
   templateUrl: './members.html',
   styleUrl: './members.css',
 })
@@ -63,6 +64,14 @@ export class Members implements OnInit {
   /** undefined = fermé, null = création, MemberDto = modification */
   readonly editing = signal<MemberDto | null | undefined>(undefined);
   readonly paying = signal<MemberLite | null>(null);
+
+  /** Bouton d'actions en bas à droite (maquette) */
+  readonly fabActions: FabAction[] = [
+    { id: 'new', label: 'Nouveau membre', iconPath: 'M12 5v14M5 12h14' },
+    { id: 'import', label: 'Importer une liste', iconPath: 'M12 21V9M7 14l5-5 5 5M4 3h16' },
+    { id: 'remind', label: 'Relancer les expirés', iconPath: 'M22 2L11 13M22 2l-7 20-4-9-9-4z' },
+    { id: 'export', label: 'Exporter les données', iconPath: 'M12 3v12M7 10l5 5 5-5M4 21h16' },
+  ];
 
   readonly stateOptions: FilterOption[] = this.states.map(s => ({ value: s, label: STATE_LABELS[s] }));
   readonly planOptions = computed<FilterOption[]>(() => [
@@ -134,6 +143,13 @@ export class Members implements OnInit {
     this.api.plans(true).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(p => this.plans.set(p));
     // /members?new=1 ouvre directement l'inscription (depuis l'accueil ou le tableau de bord)
     if (this.route.snapshot.queryParamMap.get('new')) this.editing.set(null);
+    // /members?q=… : recherche lancée depuis la barre du haut (aussi quand on est déjà sur la page)
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(params => {
+        const q = params.get('q');
+        if (q !== null) this.query.set(q);
+      });
   }
 
   load(): void {
@@ -158,6 +174,22 @@ export class Members implements OnInit {
   lastVisit(m: MemberDto): string {
     if (!m.lastVisitDate) return 'Aucune';
     return m.lastVisitDate === todayIso() ? 'Aujourd’hui' : frDate(m.lastVisitDate);
+  }
+
+  onFabAction(a: FabAction): void {
+    switch (a.id) {
+      case 'new':
+        this.editing.set(null);
+        break;
+      case 'import':
+        this.router.navigate(['/members/import']);
+        break;
+      case 'remind':
+        this.router.navigate(['/reminders']);
+        break;
+      default:
+        this.exportCsv();
+    }
   }
 
   toggleSort(key: SortKey): void {

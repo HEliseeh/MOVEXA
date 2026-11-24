@@ -1,65 +1,81 @@
 <div class="page">
-  <nav class="breadcrumb" aria-label="Fil d'Ariane"><a routerLink="/members">Membres</a> / {{ member() ? member()!.firstName + ' ' + member()!.lastName : '…' }}</nav>
+  <nav class="crumb" aria-label="Fil d'Ariane">
+    <a routerLink="/members">Membres</a> / {{ member() ? member()!.firstName + ' ' + member()!.lastName : '…' }}
+  </nav>
 
   @if (error(); as e) {
-    <div class="alert alert--error" role="alert">{{ e }}</div>
+    <div class="alert" role="alert">{{ e }}</div>
   }
 
   @if (member(); as m) {
-    <!-- ===== EN-TÊTE ===== -->
-    <section class="card md-head">
-      <span class="avatar avatar--lg" aria-hidden="true">{{ initials(m.firstName, m.lastName) }}</span>
-      <div class="md-head-text">
-        <h1 class="page-title">{{ m.firstName }} {{ m.lastName }}</h1>
-        <p class="page-subtitle">{{ m.phone }} · N° {{ m.memberNumber }} · inscrit le {{ frDate(m.joinDate) }}{{ m.coach ? ' · coach : ' + m.coach : '' }}</p>
-        <span class="state-pill" [class]="'state-pill state-pill--' + tones[m.state]"><span class="status-dot" [class]="'status-dot status-dot--' + tones[m.state]"></span>{{ statusText() }}</span>
+    <!-- ===== En-tête ===== -->
+    <section class="card head">
+      <span class="avatar" aria-hidden="true">{{ initials(m.firstName, m.lastName) }}</span>
+      <div class="head-text">
+        <h1 class="name">{{ m.firstName }} {{ m.lastName }}</h1>
+        <p class="muted head-sub">
+          {{ m.phone ?? 'Pas de téléphone' }} · N° {{ m.memberNumber }} · {{ joinedWord() }} le {{ frDate(m.joinDate) }}{{ m.coach ? ' · coach : ' + m.coach : '' }}
+        </p>
+        <span class="pill" [class]="'pill pill--' + tones[m.state]">
+          <span class="dot" [class]="'dot dot--' + tones[m.state]" aria-hidden="true"></span>{{ statusText() }}
+        </span>
       </div>
-      <div class="page-actions">
-        <button type="button" class="btn btn-primary" (click)="paying.set(true)">Renouveler</button>
-        <a class="btn btn-outline" [href]="reminderLink(m)" target="_blank" rel="noopener">Envoyer un rappel</a>
-        <button type="button" class="btn btn-outline" (click)="editing.set(true)">Modifier</button>
+      <div class="actions">
+        <button type="button" class="btn btn--dark" (click)="paying.set(true)">Renouveler</button>
+        @if (m.phone) {
+          <a class="btn btn--outline" [href]="reminderLink(m)" target="_blank" rel="noopener">Envoyer un rappel</a>
+        }
+        <button type="button" class="btn btn--outline" (click)="editing.set(true)">Modifier</button>
       </div>
     </section>
 
-    <div class="md-columns">
-      <div class="md-main">
-        <!-- ===== ABONNEMENT EN COURS ===== -->
-        <section class="card md-period">
-          <div class="md-period-head">
+    <div class="columns">
+      <div class="col-main">
+        <!-- ===== Abonnement en cours ===== -->
+        <section class="card period">
+          <div class="period-head">
             <h2 class="card-title">Abonnement en cours</h2>
-            @if (period(); as p) { <span class="text-strong">{{ p.planName }} · {{ fcfa(p.price) }}</span> }
+            @if (period(); as p) {
+              <span class="muted-15">{{ p.planName }} · {{ fcfa(p.price) }}</span>
+            }
           </div>
           @if (period(); as p) {
-            <div class="bar" aria-hidden="true"><span [style.width.%]="p.pct" [class]="'bar-fill--' + tones[m.state]"></span></div>
-            <div class="md-period-dates"><span>Début {{ frDate(p.startDate) }}</span><span>{{ p.remaining }}</span><span>Fin {{ frDate(p.endDate) }}</span></div>
+            <div class="progress" aria-hidden="true">
+              <span [style.width.%]="p.pct" [class]="'progress-fill--' + tones[m.state]"></span>
+            </div>
+            <div class="period-dates">
+              <span>Début {{ frDate(p.startDate) }}</span>
+              <span class="period-left">{{ p.remaining }}</span>
+              <span>Fin {{ frDate(p.endDate) }}</span>
+            </div>
           } @else {
-            <p class="help">Aucun abonnement en cours. Utilisez « Renouveler » pour encaisser une formule.</p>
+            <p class="muted">Aucun abonnement en cours. Utilise « Renouveler » pour encaisser une formule.</p>
           }
         </section>
 
-        <!-- ===== HISTORIQUE ===== -->
+        <!-- ===== Historique ===== -->
         <section class="card card--flush">
-          <div class="tabs md-tabs" role="tablist" aria-label="Historique">
-            <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'pay'" (click)="tab.set('pay')">Paiements</button>
-            <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'visits'" (click)="tab.set('visits')">Visites</button>
-            <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'reminders'" (click)="tab.set('reminders')">Rappels envoyés</button>
+          <div class="tabs" role="tablist" aria-label="Historique">
+            @for (t of tabs; track t.id) {
+              <button type="button" role="tab" class="tab" [attr.aria-selected]="tab() === t.id" (click)="tab.set(t.id)">{{ t.label }}</button>
+            }
           </div>
 
           @if (tab() === 'pay') {
             @for (p of data()!.payments; track p.id) {
-              <div class="follow-row md-pay" [class.md-pay--cancelled]="p.status === 'CANCELLED'">
-                <div class="follow-main">
-                  <div class="text-strong md-pay-title">{{ p.planName }} · {{ fcfa(p.amount) }}</div>
-                  <div class="follow-detail">{{ paymentDetail(p) }}</div>
+              <div class="line-row">
+                <div class="line-main">
+                  <div class="line-title" [class.struck]="p.status === 'CANCELLED'">{{ p.planName }} · {{ fcfa(p.amount) }}</div>
+                  <div class="muted">{{ paymentDetail(p) }}</div>
                 </div>
-                <span class="status nowrap">
-                  <span class="status-dot" [class.status-dot--success]="p.status === 'PAID'" [class.status-dot--warning]="p.status === 'PENDING'"></span>
+                <span class="status">
+                  <span class="dot" [class.dot--success]="p.status === 'PAID'" [class.dot--warning]="p.status === 'PENDING'" aria-hidden="true"></span>
                   {{ p.status === 'PAID' ? 'Payé' : p.status === 'PENDING' ? 'Lien envoyé, en attente' : 'Annulé' }}
                 </span>
                 @if (p.status === 'PAID') {
-                  <a [routerLink]="['/receipts', p.id]" class="nowrap">Reçu {{ p.receiptNumber }}</a>
+                  <a class="line-link" [routerLink]="['/receipts', p.id]">Reçu {{ p.receiptNumber }}</a>
                   @if (store.isManager()) {
-                    <button type="button" class="link-btn" (click)="cancelling.set(p)">Annuler</button>
+                    <button type="button" class="text-btn" (click)="cancelling.set(p)">Annuler</button>
                   }
                 }
               </div>
@@ -69,24 +85,27 @@
           }
 
           @if (tab() === 'visits') {
-            <div class="md-visits">
-              <p><strong>{{ m.visitsLast30Days }} visite{{ m.visitsLast30Days > 1 ? 's' : '' }}</strong> sur les 30 derniers jours.</p>
-              <div class="md-visit-grid">
+            <div class="visits">
+              <p class="visits-text">
+                <strong>{{ m.visitsLast30Days }} visite{{ m.visitsLast30Days > 1 ? 's' : '' }}</strong> sur les 30 derniers jours.
+              </p>
+              <div class="visit-grid" role="img" [attr.aria-label]="m.visitsLast30Days + ' visites sur les 30 derniers jours'">
                 @for (d of visitGrid(); track d.day) {
                   <span [class.came]="d.came" [title]="d.label"></span>
                 }
               </div>
-              <div class="md-legend"><span><span class="came"></span>Venu</span><span><span></span>Absent</span></div>
+              <div class="legend">
+                <span><span class="swatch came"></span>{{ m.gender === 'FEMALE' ? 'Venue' : 'Venu' }}</span>
+                <span><span class="swatch"></span>{{ m.gender === 'FEMALE' ? 'Absente' : 'Absent' }}</span>
+              </div>
             </div>
           }
 
           @if (tab() === 'reminders') {
             @for (r of data()!.reminders; track r.id) {
-              <div class="follow-row">
-                <div class="follow-main">
-                  <span class="text-strong">{{ ruleLabels[r.rule] }}</span> · {{ r.channel === 'SMS' ? 'SMS' : 'WhatsApp' }} · {{ dayHour(r.sentAt) }}
-                </div>
-                <span class="follow-detail">{{ r.outcomeText }}</span>
+              <div class="line-row line-row--split">
+                <span><strong>{{ ruleLabels[r.rule] }}</strong> · {{ r.channel === 'SMS' ? 'SMS' : 'WhatsApp' }} · {{ dayHour(r.sentAt) }}</span>
+                <span class="muted-15">{{ r.outcomeText }}</span>
               </div>
             } @empty {
               <p class="empty">Aucun rappel envoyé.</p>
@@ -95,21 +114,23 @@
         </section>
       </div>
 
-      <!-- ===== QR CODE ===== -->
-      <aside class="md-side">
-        <section class="card md-qr">
-          <h2 class="card-title">QR code d’accès</h2>
-          <app-qr-code [value]="m.qrToken" [size]="200" [label]="'QR code de ' + m.firstName + ' ' + m.lastName" />
-          <p class="help">À présenter à l’accueil. Enregistrez l’image puis joignez-la au message WhatsApp.</p>
-          <div class="md-qr-actions">
-            <button type="button" class="btn btn-outline" (click)="downloadQr(m)">Enregistrer l’image</button>
-            <a class="btn btn-primary" [href]="qrLink(m)" target="_blank" rel="noopener">Envoyer par WhatsApp</a>
-          </div>
+      <!-- ===== QR code et notes ===== -->
+      <aside class="col-side">
+        <section class="card qr">
+          <h2 class="card-title qr-title">QR code d'accès</h2>
+          <app-qr-code [value]="m.qrToken" [size]="160" [label]="'QR code de ' + m.firstName + ' ' + m.lastName" />
+          <p class="muted">À présenter à l’accueil. Enregistre l’image puis joins-la au message WhatsApp.</p>
+          @if (m.phone) {
+            <a class="btn btn--outline btn--block" [href]="qrLink(m)" target="_blank" rel="noopener">Renvoyer par WhatsApp</a>
+          }
+          <button type="button" class="text-btn" (click)="downloadQr(m)">Enregistrer l’image</button>
         </section>
-        <section class="card">
+        <section class="card notes">
           <h2 class="card-title">Notes</h2>
-          <p class="md-notes">{{ m.notes ?? 'Aucune note.' }}</p>
-          @if (m.email) { <p class="help">E-mail : {{ m.email }}</p> }
+          <p class="notes-text">{{ m.notes ?? 'Aucune note.' }}</p>
+          @if (m.email) {
+            <p class="muted">E-mail : {{ m.email }}</p>
+          }
         </section>
       </aside>
     </div>

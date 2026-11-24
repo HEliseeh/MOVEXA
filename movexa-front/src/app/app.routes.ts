@@ -6,10 +6,21 @@ import { roleGuard } from '@core/auth/role.guard';
 const MANAGER_ONLY = { roles: ['ROLE_ADMIN'], fallback: '/reception' };
 
 export const routes: Routes = [
-  // ---- Page publique ----
+  // ---- Pages publiques ----
   {
     path: 'login',
     loadComponent: () => import('@features/auth/login/login').then(m => m.Login),
+  },
+  {
+    path: 'forgot-password',
+    loadComponent: () =>
+      import('@features/auth/forgot-password/forgot-password').then(m => m.ForgotPassword),
+  },
+  {
+    // Chemin du lien envoyé par le gateway (templates/mail/passwordResetEmail.html)
+    path: 'account/reset/finish',
+    loadComponent: () =>
+      import('@features/auth/reset-password/reset-password').then(m => m.ResetPassword),
   },
 
   // ---- Zone authentifiée (layout avec menu) ----

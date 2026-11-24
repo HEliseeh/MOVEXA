@@ -34,7 +34,7 @@ export class Prospects implements OnInit {
   readonly statusLabels = PROSPECT_STATUS_LABELS;
   readonly frDate = frDate;
 
-  readonly scope = signal<Scope>('OPEN');
+  readonly scope = signal<Scope>('TODAY');
   readonly list = signal<Prospect[]>([]);
   readonly allOpen = signal<Prospect[]>([]);
   readonly selectedId = signal<number | null>(null);
@@ -44,6 +44,16 @@ export class Prospects implements OnInit {
   readonly template = signal<Template>('J1');
   readonly converting = signal<MemberPrefill | null>(null);
   private gymName = 'la salle';
+  /** Points gagnés par interaction (réglages de la salle) */
+  readonly points = signal({ REPLY: 0, VISIT: 0, TRIAL: 0 });
+  /** Au premier chargement, « À relancer aujourd'hui » vide → on montre « Tous en cours » */
+  private firstLoad = true;
+
+  readonly tabs: { id: Scope; label: string }[] = [
+    { id: 'TODAY', label: 'À relancer aujourd’hui' },
+    { id: 'OPEN', label: 'Tous en cours' },
+    { id: 'CLOSED', label: 'Convertis et perdus' },
+  ];
 
   // ---- Ajout rapide ----
   readonly newPhone = signal('');
@@ -78,7 +88,10 @@ export class Prospects implements OnInit {
     const q = this.route.snapshot.queryParamMap;
     if (q.get('phone')) this.newPhone.set(q.get('phone')!);
     if (q.get('new') || q.get('phone')) setTimeout(() => this.phoneInput()?.nativeElement.focus());
-    this.api.settings().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(s => (this.gymName = s.name ?? 'la salle'));
+    this.api.settings().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(s => {
+      this.gymName = s.name ?? 'la salle';
+      this.points.set({ REPLY: s.pointsReply, VISIT: s.pointsVisit, TRIAL: s.pointsTrial });
+    });
     this.api.plans().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(p => this.plans.set(p));
     this.load();
     const convertId = Number(q.get('convert'));
@@ -87,6 +100,13 @@ export class Prospects implements OnInit {
 
   load(): void {
     this.api.prospects(this.scope()).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(list => {
+      if (this.firstLoad && this.scope() === 'TODAY' && list.length === 0) {
+        this.firstLoad = false;
+        this.setScope('OPEN');
+        return;
+      }
+      this.firstLoad = false;
+      if (this.scope() === 'TODAY') list = [...list].sort((a, b) => b.score - a.score);
       this.list.set(list);
       if (!list.some(p => p.id === this.selectedId())) this.select(list[0]?.id ?? null);
     });
@@ -180,6 +200,15 @@ export class Prospects implements OnInit {
     this.allOpen.update(list => list.map(x => (x.id === p.id ? p : x)));
     this.api.prospectEvents(p.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(e => this.events.set(e));
   }
+
+  /** Noms des prospects sous le seuil d'alerte, pour le bandeau « Dernière chance » */
+  readonly lastChanceText = computed(() => {
+    const names = this.lastChance().map(p => p.name ?? p.phone);
+    if (names.length <= 1) return names.join('');
+    const shown = names.slice(0, 3);
+    const rest = names.length - shown.length;
+    return rest > 0 ? `${shown.join(', ')} et ${rest} autre(s)` : `${shown.slice(0, -1).join(', ')} et ${shown.at(-1)}`;
+  });
 
   scoreTone(p: Prospect): string {
     return p.lastChance ? 'low' : p.score >= 60 ? 'high' : 'mid';
