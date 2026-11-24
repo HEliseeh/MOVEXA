@@ -1,14 +1,15 @@
 package com.movexa.gateway.service.dto;
 
 import com.movexa.gateway.config.Constants;
+import com.movexa.gateway.security.PasswordPolicy;
 import jakarta.validation.constraints.*;
 import java.time.Instant;
 
 /** Comptes du personnel de la salle (écran Paramètres › Utilisateurs, réservé au gérant). */
 public final class StaffDTOs {
 
-    public static final int PASSWORD_MIN = 8;
-    public static final int PASSWORD_MAX = 100;
+    public static final int PASSWORD_MIN = PasswordPolicy.MIN_LENGTH;
+    public static final int PASSWORD_MAX = PasswordPolicy.MAX_LENGTH;
 
     private StaffDTOs() {}
 

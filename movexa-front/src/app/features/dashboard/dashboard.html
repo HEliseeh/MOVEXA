@@ -1,135 +1,178 @@
-<div class="page">
-
-  <!-- ===== EN-TÊTE ===== -->
-  <header class="page-header">
-    <div>
-      <h1 class="page-title">Tableau de bord</h1>
-      <p class="page-subtitle">{{ today }}</p>
+<div class="dash">
+  @if (error(); as message) {
+    <div class="alert" role="alert">
+      {{ message }}
+      <button type="button" class="link-btn" (click)="load()">Réessayer</button>
     </div>
-    <div class="segmented" role="tablist" aria-label="Période">
-      @for (p of periods; track p.id) {
-        <button type="button" role="tab" [attr.aria-selected]="period() === p.id" (click)="setPeriod(p.id)">{{ p.label }}</button>
-      }
-    </div>
-  </header>
-
-  @if (error(); as e) {
-    <div class="alert alert--error" role="alert">{{ e }} <button type="button" class="link-btn" (click)="load()">Réessayer</button></div>
   }
 
-  @if (data(); as d) {
-    <!-- ===== ARGENT + KPI ===== -->
-    <div class="db-top">
-      <section class="db-money" aria-labelledby="db-money-title">
-        <div>
-          <h2 id="db-money-title" class="db-money-title">Encaissé {{ periodText() }}</h2>
-          <div class="db-money-total">{{ fcfa(d.totalPaid) }}</div>
-          <div class="db-money-sub">
-            {{ d.paymentsCount }} paiement{{ d.paymentsCount > 1 ? 's' : '' }} enregistré{{ d.paymentsCount > 1 ? 's' : '' }}@if (d.cancelledCount) {, {{ d.cancelledCount }} annulé{{ d.cancelledCount > 1 ? 's' : '' }}}
-          </div>
-        </div>
-        <div class="db-stack" aria-hidden="true">
-          @for (m of methods(); track m.label) {
-            <span [style.width.%]="m.pct" [style.background]="m.color"></span>
-          }
-        </div>
-        <div class="db-legend">
-          @for (m of methods(); track m.label) {
-            <div class="db-legend-item">
-              <span class="db-swatch" [style.background]="m.color"></span>
-              <div>
-                <div class="db-legend-label">{{ m.label }}</div>
-                <div class="db-legend-value">{{ fcfa(m.value) }}</div>
-              </div>
-            </div>
-          }
-        </div>
-      </section>
+  <!-- ===== Ma salle aujourd'hui ===== -->
+  <section class="block">
+    <h1 class="section-title">Ma salle aujourd'hui</h1>
+    <div class="hero">
+      <div class="hero-text">
+        <span class="hero-hello">Bonjour {{ firstName() }} !</span>
+        <p class="hero-headline">{{ today() ? headline() : 'Chargement…' }}</p>
+        <a class="hero-btn" routerLink="/access">
+          VOIR LE DÉTAIL
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M8 7h9v9" /></svg>
+        </a>
+      </div>
 
-      <div class="db-kpis">
-        @for (k of kpis(); track k.label) {
-          <div class="kpi">
-            <div class="kpi-label">{{ k.label }}</div>
-            <div class="kpi-value">{{ k.value }}</div>
-            <div class="kpi-sub">{{ k.sub }}</div>
-          </div>
+      <div class="goals">
+        @for (g of goals(); track g.n) {
+          <article class="goal" [class]="'goal goal--' + g.tone">
+            <span class="goal-n">{{ g.n }}</span>
+            <svg class="goal-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path [attr.d]="g.icon" />
+            </svg>
+            <span class="goal-label">{{ g.label }}</span>
+            <span class="goal-detail">{{ g.detail }}</span>
+            @if (g.pct !== null) {
+              <span class="goal-bar" role="img" [attr.aria-label]="g.label + ' : ' + g.pct + ' %'">
+                <span class="goal-bar-fill" [style.width.%]="g.pct"></span>
+              </span>
+            }
+          </article>
         }
       </div>
     </div>
+  </section>
 
-    <!-- ===== FRÉQUENTATION ===== -->
-    <section class="card db-chart-card">
-      <div class="db-chart-head">
-        <h2 class="card-title">Fréquentation : entrées par jour, 14 derniers jours</h2>
-        <div class="text-strong" aria-live="polite">{{ readout() }}</div>
-      </div>
-      <div class="db-chart">
-        @for (l of gridLines(); track l.value) {
-          <div class="db-gridline" [style.bottom.px]="l.px"><span>{{ l.value }}</span></div>
-        }
-        <div class="db-bars">
-          @for (day of days(); track $index) {
-            <button type="button" class="db-bar" [attr.aria-label]="day.aria"
-                    (mouseenter)="hovered.set($index)" (focus)="hovered.set($index)" (mouseleave)="hovered.set(null)" (blur)="hovered.set(null)">
-              <span [style.height.px]="day.px" [class.current]="day.current"></span>
-            </button>
-          }
-        </div>
-      </div>
-      <div class="db-ticks" aria-hidden="true">
-        @for (day of days(); track $index) { <span>{{ day.tick }}</span> }
-      </div>
-      <div class="db-chart-legend">
-        <span><span class="db-swatch db-swatch--past"></span>Journée terminée</span>
-        <span><span class="db-swatch db-swatch--current"></span>Aujourd’hui, en cours</span>
-      </div>
-    </section>
-
-    <!-- ===== À SUIVRE ===== -->
-    <div class="db-lists">
-      <section class="card card--flush db-list">
-        <div class="card-head">
-          <h2 class="card-title">À renouveler bientôt <span class="db-count">({{ d.expiringCount }})</span></h2>
-          <a routerLink="/subscriptions" class="text-strong">Tout voir</a>
-        </div>
-        @for (r of d.expiring; track r.member.id) {
-          <div class="follow-row">
-            <span class="status-dot status-dot--warning"></span>
-            <div class="follow-main">
-              <a class="follow-name" [routerLink]="['/members', r.member.id]">{{ r.member.firstName }} {{ r.member.lastName }}</a>
-              <div class="follow-detail">{{ dueDetail(r, false) }}</div>
-            </div>
-            <button type="button" class="btn btn-outline btn-sm" [class.is-done]="sent().has(r.member.id)" [disabled]="sent().has(r.member.id)" (click)="remind(r)">
-              {{ sent().has(r.member.id) ? 'Envoyée' : 'Relancer' }}
-            </button>
+  <div class="columns">
+    <div class="col-main">
+      <!-- ===== Statistiques ===== -->
+      <section class="block">
+        <h2 class="section-title">Statistiques</h2>
+        <div class="stats">
+          <div class="stat">
+            <span class="stat-value">{{ month()?.activeMembers ?? '–' }}</span>
+            <span class="stat-label">Membres actifs</span>
           </div>
-        } @empty {
-          <p class="empty">Aucun abonnement n’arrive à échéance dans les prochains jours.</p>
-        }
+          <div class="stat">
+            <span class="stat-value">{{ month()?.expiringCount ?? '–' }}</span>
+            <span class="stat-label">{{ expiringLabel() }}</span>
+          </div>
+          <div class="stat stat--wide">
+            <div class="stat-text">
+              <span class="stat-value">{{ month() ? averageEntries() : '–' }}</span>
+              <span class="stat-label">Entrées par jour<br />(moyenne 7 jours)</span>
+            </div>
+            @if (spark(); as s) {
+              <svg class="spark" [attr.viewBox]="'0 0 160 70'" role="img" [attr.aria-label]="s.aria"
+                   preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="dash-spark" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" class="spark-stop-top" />
+                    <stop offset="1" class="spark-stop-bottom" />
+                  </linearGradient>
+                </defs>
+                <path [attr.d]="s.area" fill="url(#dash-spark)" />
+                <path [attr.d]="s.line" class="spark-line" />
+              </svg>
+            }
+          </div>
+        </div>
       </section>
 
-      <section class="card card--flush db-list">
-        <div class="card-head">
-          <h2 class="card-title">Expirés, non renouvelés <span class="db-count">({{ d.expiredCount }})</span></h2>
-          <a routerLink="/subscriptions" [queryParams]="{ tab: 'expired' }" class="text-strong">Tout voir</a>
+      <!-- ===== À renouveler ===== -->
+      <section class="block block--tight">
+        <div class="section-head">
+          <h2 class="section-title">À renouveler</h2>
+          <a class="see-all" routerLink="/subscriptions">Tout voir</a>
         </div>
-        @for (r of d.expired; track r.member.id) {
-          <div class="follow-row">
-            <span class="status-dot status-dot--danger"></span>
-            <div class="follow-main">
-              <a class="follow-name" [routerLink]="['/members', r.member.id]">{{ r.member.firstName }} {{ r.member.lastName }}</a>
-              <div class="follow-detail">{{ dueDetail(r, true) }}</div>
+
+        @for (r of renew(); track r.id) {
+          <div class="row">
+            <span class="avatar" [class]="'avatar avatar--' + r.tone" aria-hidden="true">{{ r.ini }}</span>
+            <a class="row-name" [routerLink]="['/members', r.id]">
+              <span class="row-title">{{ r.name }}</span>
+              <span class="row-sub">{{ r.plan }}</span>
+            </a>
+            <span class="row-date">
+              {{ r.date }}
+              @if (sent().has(r.id)) {
+                <span class="row-sent">· relancé</span>
+              }
+            </span>
+            <div class="row-actions">
+              <button
+                type="button"
+                class="more"
+                [attr.aria-label]="'Actions pour ' + r.name"
+                [attr.aria-expanded]="openMenu() === r.id"
+                (click)="toggleMenu(r.id)"
+              >···</button>
+              @if (openMenu() === r.id) {
+                <div class="menu" role="menu">
+                  <a class="menu-item" role="menuitem" [routerLink]="['/members', r.id]">Ouvrir la fiche</a>
+                  <button type="button" class="menu-item" role="menuitem" (click)="remind(r.due)">Relancer sur WhatsApp</button>
+                </div>
+              }
             </div>
-            <a routerLink="/reminders" class="btn btn-outline btn-sm">Voir la relance</a>
           </div>
         } @empty {
-          <p class="empty">Aucun membre expiré.</p>
+          <p class="empty">{{ month() ? 'Aucun abonnement n’arrive à échéance prochainement.' : 'Chargement…' }}</p>
         }
       </section>
     </div>
-  } @else if (!error()) {
-    <p class="empty">Chargement…</p>
-  }
+
+    <div class="col-side">
+      <!-- ===== Calendrier ===== -->
+      <section class="block block--cal">
+        <div class="section-head section-head--center">
+          <h2 class="section-title">{{ monthLabel() }}</h2>
+          <div class="cal-nav">
+            <button type="button" class="cal-arrow" aria-label="Mois précédent" (click)="changeMonth(-1)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+            </button>
+            <button type="button" class="cal-arrow" aria-label="Mois suivant" (click)="changeMonth(1)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+            </button>
+          </div>
+        </div>
+        <div class="cal">
+          @for (w of weekdays; track w) {
+            <span class="cal-weekday">{{ w }}</span>
+          }
+          @for (d of calendar(); track d.iso) {
+            <button
+              type="button"
+              class="day"
+              [class.day--out]="d.out"
+              [class.day--today]="d.today"
+              [class.day--on]="!d.out && d.iso === selectedDay()"
+              [attr.aria-pressed]="!d.out && d.iso === selectedDay()"
+              [attr.aria-label]="dayAria(d)"
+              [disabled]="d.out"
+              (click)="pickDay(d)"
+            >{{ d.n }}</button>
+          }
+        </div>
+      </section>
+
+      <!-- ===== À venir ===== -->
+      <section class="block block--cal">
+        <div class="section-head">
+          <h2 class="section-title">À venir</h2>
+        </div>
+        <div class="event">
+          <span class="event-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" /></svg>
+          </span>
+          <span class="event-text">
+            <span class="event-time">{{ selectedLabel() }}</span>
+            <span class="event-title">Le planning des cours n'est pas encore disponible.</span>
+          </span>
+        </div>
+      </section>
+    </div>
+  </div>
 </div>
 
 <app-fab [actions]="fabActions" (actionTriggered)="onFabAction($event)" />

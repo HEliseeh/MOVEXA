@@ -1,0 +1,28 @@
+<nav id="main-nav" class="sidebar" aria-label="Navigation principale">
+  <div class="sidebar-brand">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" />
+    </svg>
+    <span class="sidebar-brand-name">flexclub</span>
+  </div>
+
+  @for (item of items; track item.id) {
+    <app-menu-component
+      [item]="item"
+      [activeId]="activeId()"
+      [open]="openId() === item.id"
+      (toggled)="toggle($event)"
+    />
+  }
+
+  <button type="button" class="sidebar-logout" (click)="logout()">
+    <span class="sidebar-logout-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l-5-5 5-5M5 12h11" />
+      </svg>
+    </span>
+    Déconnexion
+  </button>
+</nav>

@@ -6,6 +6,7 @@ import com.movexa.gateway.domain.User;
 import com.movexa.gateway.repository.AuthorityRepository;
 import com.movexa.gateway.repository.UserRepository;
 import com.movexa.gateway.security.AuthoritiesConstants;
+import com.movexa.gateway.security.PasswordPolicy;
 import com.movexa.gateway.security.SecurityUtils;
 import com.movexa.gateway.service.dto.StaffDTOs.*;
 import com.movexa.gateway.web.rest.errors.BadRequestAlertException;
@@ -66,6 +67,7 @@ public class StaffService {
 
     @Transactional
     public Mono<StaffAccount> create(CreateStaffRequest req) {
+        requireStrong(req.password());
         Set<String> authorities = authoritiesFor(req.role());
         String login = req.login().trim().toLowerCase(Locale.ROOT);
         String email = emailOrNull(req.email());
@@ -134,6 +136,7 @@ public class StaffService {
 
     @Transactional
     public Mono<Void> resetPassword(Long id, ResetPasswordRequest req) {
+        requireStrong(req.password());
         // findById ne charge pas les rôles : saveUser n'a donc rien à réinsérer dans jhi_user_authority
         return userRepository
             .findById(id)
@@ -174,6 +177,16 @@ public class StaffService {
                 user.getAuthorities().addAll(found);
                 return user;
             });
+    }
+
+    /** Même règle que pour l'utilisateur qui change son mot de passe (PasswordPolicy) */
+    private static void requireStrong(String password) {
+        if (!PasswordPolicy.isValid(password)) {
+            throw bad(
+                "Mot de passe trop faible : 8 caractères minimum, avec une majuscule, un chiffre et un caractère spécial.",
+                "weakpassword"
+            );
+        }
     }
 
     private static Set<String> authoritiesFor(StaffRole role) {

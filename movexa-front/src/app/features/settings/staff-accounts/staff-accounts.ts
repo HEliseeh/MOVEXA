@@ -6,8 +6,15 @@ import { MovexaApi } from '@core/api/movexa-api.service';
 import { CurrentUserStore } from '@core/auth/current-user.store';
 import { ToastService } from '@core/notifications/toast.service';
 import { apiError } from '@shared/format';
+import { PASSWORD_MIN_LENGTH, PASSWORD_RULES } from '@shared/password-policy';
 
-const PASSWORD_MIN = 8;
+const PASSWORD_MIN = PASSWORD_MIN_LENGTH;
+
+/** Règles non respectées, en clair (null si le mot de passe convient) */
+function passwordProblem(value: string): string | null {
+  const failed = PASSWORD_RULES.filter(r => !r.test(value));
+  return failed.length ? `Mot de passe : ${failed.map(r => r.label.toLowerCase()).join(', ')}.` : null;
+}
 
 interface AccountDraft {
   id: number | null;
@@ -37,12 +44,26 @@ export const ROLE_LABELS: Record<StaffRole, string> = {
   OTHER: 'Aucun rôle (pas d’accès)',
 };
 
-/** Mot de passe facile à dicter : pas de 0/O, 1/l/I. */
+/**
+ * Mot de passe facile à dicter (pas de 0/O, 1/l/I) qui respecte la règle du gateway :
+ * au moins une majuscule, un chiffre et un caractère spécial.
+ */
 function generatePassword(length = 10): string {
-  const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  const values = new Uint32Array(length);
-  crypto.getRandomValues(values);
-  return Array.from(values, v => chars[v % chars.length]).join('');
+  const lower = 'abcdefghjkmnpqrstuvwxyz';
+  const upper = 'ABCDEFGHJKMNPQRSTUVWXYZ';
+  const digits = '23456789';
+  const special = '@#-!?';
+  const random = (max: number) => crypto.getRandomValues(new Uint32Array(1))[0] % max;
+  const pick = (set: string) => set[random(set.length)];
+  // Une majuscule, un chiffre et un caractère spécial garantis, le reste au hasard…
+  const chars = [pick(upper), pick(digits), pick(special)];
+  while (chars.length < length) chars.push(pick(lower + upper + digits));
+  // …puis mélangés (Fisher-Yates) pour que ces caractères ne soient pas toujours au début
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = random(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join('');
 }
 
 /**
@@ -210,7 +231,8 @@ export class StaffAccounts implements OnInit {
       const login = d.login.trim();
       if (login.length < 3) return 'L’identifiant doit faire au moins 3 caractères.';
       if (!/^[_.@A-Za-z0-9-]+$/.test(login)) return 'Identifiant : lettres, chiffres, point, tiret ou soulignement, sans espace ni accent.';
-      if (d.password.length < PASSWORD_MIN) return `Le mot de passe doit faire au moins ${PASSWORD_MIN} caractères.`;
+      const weak = passwordProblem(d.password);
+      if (weak) return weak;
     }
     if (d.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email.trim())) return 'Adresse e-mail invalide.';
     return null;
@@ -232,8 +254,9 @@ export class StaffAccounts implements OnInit {
     const a = this.resetting();
     const password = this.newPassword();
     if (!a || this.saving()) return;
-    if (password.length < PASSWORD_MIN) {
-      this.formError.set(`Le mot de passe doit faire au moins ${PASSWORD_MIN} caractères.`);
+    const weak = passwordProblem(password);
+    if (weak) {
+      this.formError.set(weak);
       return;
     }
     this.saving.set(true);

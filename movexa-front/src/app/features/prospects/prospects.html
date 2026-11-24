@@ -1,142 +1,165 @@
 <div class="page">
-  <header class="page-header">
-    <div>
-      <h1 class="page-title">Prospects</h1>
-      <p class="page-subtitle">Personnes intéressées, pas encore membres. Chance d’adhésion de 0 à 100 %.</p>
-    </div>
+  <header>
+    <h1 class="title">Prospects</h1>
+    <p class="sub">Visiteurs, demandes de renseignements et séances d'essai. Un prospect converti devient membre sans ressaisie.</p>
   </header>
 
-  <!-- ===== AJOUT RAPIDE ===== -->
-  <form class="card ps-add" (ngSubmit)="add()">
+  <!-- ===== Ajout rapide ===== -->
+  <form class="card add" aria-label="Ajout rapide d'un prospect" (ngSubmit)="add()">
     <div class="field">
-      <label for="ps-tel">Téléphone *</label>
-      <input #phoneInput id="ps-tel" name="tel" class="input-line" type="tel" inputmode="tel" autocomplete="off" [ngModel]="newPhone()" (ngModelChange)="newPhone.set($event); addMessage.set(null)" />
+      <label for="ps-tel">Téléphone <span class="req" aria-hidden="true">*</span></label>
+      <input #phoneInput id="ps-tel" name="tel" class="line" type="tel" inputmode="tel" autocomplete="off" placeholder="Ex. 97 00 00 00"
+             required [class.line--error]="addMessage() && !addMessage()!.ok"
+             [ngModel]="newPhone()" (ngModelChange)="newPhone.set($event); addMessage.set(null)" />
     </div>
     <div class="field">
-      <label for="ps-src">Source</label>
-      <select id="ps-src" name="src" class="input-line" [ngModel]="newSource()" (ngModelChange)="newSource.set($event)">
+      <label for="ps-src">Source <span class="req" aria-hidden="true">*</span></label>
+      <select id="ps-src" name="src" class="line" [ngModel]="newSource()" (ngModelChange)="newSource.set($event)">
         @for (s of sources; track s) { <option [value]="s">{{ sourceLabels[s] }}</option> }
       </select>
     </div>
     <div class="field">
       <label for="ps-nom">Nom (facultatif)</label>
-      <input id="ps-nom" name="nom" class="input-line" autocomplete="off" [ngModel]="newName()" (ngModelChange)="newName.set($event)" />
+      <input id="ps-nom" name="nom" class="line" autocomplete="off" [ngModel]="newName()" (ngModelChange)="newName.set($event)" />
     </div>
     <div class="field">
       <label for="ps-plan">Formule qui l’intéresse</label>
-      <select id="ps-plan" name="plan" class="input-line" [ngModel]="newPlan()" (ngModelChange)="newPlan.set($event)">
+      <select id="ps-plan" name="plan" class="line" [ngModel]="newPlan()" (ngModelChange)="newPlan.set($event)">
         <option value="">Ne sait pas</option>
         @for (p of plans(); track p.id) { <option [value]="p.name">{{ p.name }}</option> }
       </select>
     </div>
-    <button type="submit" class="btn btn-primary" [disabled]="adding()">{{ adding() ? 'Ajout…' : 'Ajouter' }}</button>
+    <button type="submit" class="btn btn--dark" [disabled]="adding()">{{ adding() ? 'Ajout…' : 'Ajouter le prospect' }}</button>
     @if (addMessage(); as m) {
-      <p class="ps-add-msg" [class.error-text]="!m.ok" [class.ps-ok]="m.ok" role="status">{{ m.text }}</p>
+      <p class="add-msg" [class.add-msg--ok]="m.ok" role="status">{{ m.text }}</p>
     }
   </form>
 
   @if (lastChance().length) {
-    <div class="alert alert--warning" role="status">
-      {{ lastChance().length }} prospect(s) sous le seuil d’alerte : sans interaction, leur fiche sera supprimée automatiquement à 0 %.
-      Dernière occasion de les relancer.
+    <div class="banner" role="status">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M12 8v5M12 16.5v.5M10.3 3.9L2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+      </svg>
+      <span>
+        <strong>Dernière chance :</strong> {{ lastChanceText() }}
+        {{ lastChance().length > 1 ? 'sont' : 'est' }} sous le seuil d’alerte. Sans interaction, la fiche sera supprimée automatiquement à 0 %.
+      </span>
     </div>
   }
 
-  <div class="ps-columns">
-    <!-- ===== LISTE ===== -->
-    <section class="card card--flush ps-list">
-      <div class="tabs ps-tabs" role="tablist" aria-label="Listes">
-        <button type="button" class="tab" role="tab" [attr.aria-selected]="scope() === 'OPEN'" (click)="setScope('OPEN')">Tous en cours</button>
-        <button type="button" class="tab" role="tab" [attr.aria-selected]="scope() === 'TODAY'" (click)="setScope('TODAY')">À relancer aujourd’hui</button>
-        <button type="button" class="tab" role="tab" [attr.aria-selected]="scope() === 'CLOSED'" (click)="setScope('CLOSED')">Convertis et perdus</button>
+  <div class="columns">
+    <!-- ===== Liste ===== -->
+    <section class="card card--flush list">
+      <div class="tabs" role="tablist" aria-label="Listes de prospects">
+        @for (t of tabs; track t.id) {
+          <button type="button" role="tab" class="tab" [attr.aria-selected]="scope() === t.id" (click)="setScope(t.id)">{{ t.label }}</button>
+        }
       </div>
-      @for (p of list(); track p.id) {
-        <button type="button" class="ps-row" [attr.aria-pressed]="p.id === selectedId()" (click)="select(p.id)">
-          <span class="ps-score" [class]="'ps-score ps-score--' + scoreTone(p)">
-            <span class="ps-score-value">{{ p.score }} %</span>
-            <span class="bar"><span [style.width.%]="p.score"></span></span>
-          </span>
-          <span class="ps-row-main">
-            <span class="text-strong">{{ p.name ?? 'Sans nom' }}</span>
-            <span class="follow-detail">{{ p.phone }} · {{ sourceLabels[p.source] }} · {{ statusLabels[p.status] }}</span>
-          </span>
-          <span class="ps-next">{{ nextText(p) }}</span>
-        </button>
-      } @empty {
-        <p class="empty">{{ scope() === 'TODAY' ? 'Personne à relancer aujourd’hui.' : 'Aucun prospect.' }}</p>
-      }
+      <div class="table-scroll">
+        <div class="table">
+          <div class="tr tr--head">
+            <span>Chance</span><span>Prospect</span><span>Source</span><span>Statut</span><span>Relance</span>
+          </div>
+          @for (p of list(); track p.id) {
+            <button type="button" class="tr tr--row" [attr.aria-pressed]="p.id === selectedId()" (click)="select(p.id)">
+              <span class="score">
+                <span class="score-value">{{ p.score }} %</span>
+                <span class="score-bar" aria-hidden="true"><span [class.low]="p.lastChance" [style.width.%]="p.score"></span></span>
+              </span>
+              <span>
+                <span class="strong">{{ p.name ?? 'Sans nom' }}</span>
+                <span class="muted">{{ p.phone }}</span>
+              </span>
+              <span>{{ sourceLabels[p.source] }}</span>
+              <span>{{ statusLabels[p.status] }}</span>
+              <span [class.late]="p.lastChance">{{ nextText(p) }}</span>
+            </button>
+          } @empty {
+            <p class="empty">{{ scope() === 'TODAY' ? 'Personne à relancer aujourd’hui.' : 'Aucun prospect.' }}</p>
+          }
+        </div>
+      </div>
 
       @if (scope() === 'CLOSED' && stats().length) {
-        <div class="ps-stats">
-          <h3 class="card-title">Quelles sources ramènent des membres ?</h3>
-          <p class="help">Compteurs anonymes, conservés même après la suppression des fiches.</p>
-          <div class="grid-row grid-row--head ps-stats-row"><span>Source</span><span>Convertis</span><span>Perdus</span><span>Supprimés à 0 %</span></div>
+        <div class="stats">
+          <h3 class="block-title">Quelles sources ramènent des membres ?</h3>
+          <p class="muted">Compteurs anonymes, conservés même après la suppression des fiches.</p>
+          <div class="stats-row stats-row--head"><span>Source</span><span>Convertis</span><span>Perdus</span><span>Supprimés à 0 %</span></div>
           @for (s of stats(); track s.source) {
-            <div class="grid-row ps-stats-row"><span>{{ sourceLabels[s.source] }}</span><span>{{ s.converted }}</span><span>{{ s.lost }}</span><span>{{ s.expired }}</span></div>
+            <div class="stats-row"><span>{{ sourceLabels[s.source] }}</span><span>{{ s.converted }}</span><span>{{ s.lost }}</span><span>{{ s.expired }}</span></div>
           }
         </div>
       }
     </section>
 
-    <!-- ===== FICHE ===== -->
-    <aside class="card ps-detail">
+    <!-- ===== Détail du prospect ===== -->
+    <section class="card detail" aria-label="Détail du prospect">
       @if (selected(); as p) {
-        <div class="ps-detail-head">
+        <div class="detail-head">
           <div>
-            <h2 class="card-title">{{ p.name ?? 'Prospect sans nom' }}</h2>
-            <p class="help">{{ p.phone }} · {{ sourceLabels[p.source] }} · premier contact le {{ frDate(p.firstContactDate) }}</p>
-            @if (p.interestedPlan) { <p class="help">Intéressé par : {{ p.interestedPlan }}</p> }
+            <h2 class="detail-name">{{ p.name ?? 'Sans nom' }}</h2>
+            <p class="muted">{{ p.phone }} · {{ sourceLabels[p.source] }} · 1er contact {{ frDate(p.firstContactDate) }}</p>
+            @if (p.interestedPlan) { <p class="muted">Intéressé par : {{ p.interestedPlan }}</p> }
           </div>
-          <div class="ps-big-score" [class]="'ps-big-score ps-score--' + scoreTone(p)">{{ p.score }} %</div>
+          <div class="big-score">
+            <div class="big-score-value" [class.low]="p.lastChance">{{ p.score }} %</div>
+            <div class="muted">chance d'adhésion</div>
+          </div>
         </div>
 
         @if (p.status !== 'CONVERTED' && p.status !== 'LOST') {
-          <div class="ps-block">
-            <h3 class="ps-block-title">Ce qui s’est passé</h3>
-            <div class="choices">
-              <button type="button" class="choice" (click)="interaction('REPLY')">A répondu (+)</button>
-              <button type="button" class="choice" (click)="interaction('VISIT')">Tarif demandé ou visite (+)</button>
-              <button type="button" class="choice" (click)="interaction('TRIAL')">Séance d’essai faite (+)</button>
+          <div>
+            <div class="block-title">Noter une interaction</div>
+            <div class="chips">
+              <button type="button" class="chip" (click)="interaction('REPLY')">A répondu (+{{ points().REPLY }})</button>
+              <button type="button" class="chip" (click)="interaction('VISIT')">Tarif demandé ou visite (+{{ points().VISIT }})</button>
+              <button type="button" class="chip" (click)="interaction('TRIAL')">Séance d’essai faite (+{{ points().TRIAL }})</button>
             </div>
           </div>
 
-          <div class="ps-block">
-            <h3 class="ps-block-title">Relancer</h3>
-            <div class="field">
-              <label for="ps-tpl">Modèle de message</label>
-              <select id="ps-tpl" class="input-line" [ngModel]="template()" (ngModelChange)="template.set($event)">
-                <option value="J1">J+1 : merci pour la visite, tarifs</option>
-                <option value="J3">J+3 : invitation à une séance d’essai</option>
-                <option value="J7">J+7 : dernière invitation</option>
-              </select>
-            </div>
-            <p class="ps-message">{{ templateText() }}</p>
-            <div class="ps-actions">
-              <button type="button" class="btn btn-primary" (click)="send('WHATSAPP')">Envoyer par WhatsApp</button>
-              <button type="button" class="btn btn-outline" (click)="send('SMS')">Envoyer par SMS</button>
+          <div class="block">
+            <label for="ps-tpl" class="block-title">Relancer avec un modèle</label>
+            <select id="ps-tpl" class="line" [ngModel]="template()" (ngModelChange)="template.set($event)">
+              <option value="J1">J+1 : remerciement et tarifs</option>
+              <option value="J3">J+3 : invitation à une séance d'essai</option>
+              <option value="J7">J+7 : dernière proposition</option>
+            </select>
+            <p class="message">{{ templateText() }}</p>
+            <div class="row-btns">
+              <button type="button" class="btn btn--dark" (click)="send('WHATSAPP')">Ouvrir WhatsApp</button>
+              <button type="button" class="btn btn--outline" (click)="send('SMS')">Envoyer par SMS</button>
             </div>
           </div>
-
-          <div class="ps-actions">
-            <button type="button" class="btn btn-primary" (click)="convert(p)">Convertir en membre</button>
-            <button type="button" class="btn btn-outline" (click)="lose()">Marquer perdu</button>
-          </div>
-        } @else if (p.convertedMemberId) {
-          <a class="btn btn-outline" [routerLink]="['/members', p.convertedMemberId]">Ouvrir la fiche membre</a>
         }
 
-        <div class="ps-block">
-          <h3 class="ps-block-title">Historique</h3>
-          <ol class="ps-history">
+        <div>
+          <div class="block-title">Historique</div>
+          <ol class="history">
             @for (e of events(); track e.id) {
-              <li><span>{{ e.label }}</span><span class="ps-delta" [class.neg]="(e.delta ?? 0) < 0">{{ e.delta === null ? '' : (e.delta > 0 ? '+' : '') + e.delta }}</span></li>
+              <li>
+                <span>{{ e.label }}</span>
+                <span class="delta" [class.delta--neg]="(e.delta ?? 0) < 0">{{ e.delta === null ? '' : (e.delta > 0 ? '+' : e.delta < 0 ? '−' : '') + (e.delta < 0 ? -e.delta : e.delta) }}</span>
+              </li>
+            } @empty {
+              <li class="muted">Aucun événement.</li>
             }
           </ol>
         </div>
+
+        <div class="detail-foot">
+          @if (p.status !== 'CONVERTED' && p.status !== 'LOST') {
+            <button type="button" class="btn btn--dark btn--wide" (click)="convert(p)">Convertir en membre</button>
+            <button type="button" class="btn btn--danger-text" (click)="lose()">Marquer perdu</button>
+          } @else if (p.convertedMemberId) {
+            <a class="btn btn--outline btn--wide" [routerLink]="['/members', p.convertedMemberId]">Ouvrir la fiche membre</a>
+          } @else {
+            <p class="muted">{{ nextText(p) }}.</p>
+          }
+        </div>
       } @else {
-        <p class="empty">Sélectionnez un prospect pour voir sa fiche.</p>
+        <p class="empty">Sélectionne un prospect pour voir sa fiche.</p>
       }
-    </aside>
+    </section>
   </div>
 </div>
 

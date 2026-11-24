@@ -71,6 +71,15 @@ export class MemberDetail implements OnInit {
       ? { id: m.id, memberNumber: m.memberNumber, firstName: m.firstName, lastName: m.lastName, phone: m.phone, planName: m.plan, endDate: m.expiryDate, state: m.state, daysLeft: m.daysLeft, qrToken: m.qrToken }
       : null;
   });
+  /** « inscrit » ou « inscrite » selon le genre renseigné */
+  readonly joinedWord = computed(() => (this.member()?.gender === 'FEMALE' ? 'inscrite' : 'inscrit'));
+
+  readonly tabs: { id: Tab; label: string }[] = [
+    { id: 'pay', label: 'Paiements' },
+    { id: 'visits', label: 'Visites' },
+    { id: 'reminders', label: 'Rappels envoyés' },
+  ];
+
   readonly statusText = computed(() => {
     const m = this.member();
     return m ? stateText(m.state, m.expiryDate, m.daysLeft) : '';

@@ -1,33 +1,41 @@
 import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import { Dashboard as DashboardData, DueMember, PaymentMethod } from '@core/api/api.models';
+import { forkJoin } from 'rxjs';
+import { Dashboard as DashboardData, DueMember } from '@core/api/api.models';
 import { MovexaApi } from '@core/api/movexa-api.service';
+import { CurrentUserStore } from '@core/auth/current-user.store';
 import { Fab, FabAction } from '@shared/fab/fab';
-import { apiError, fcfa, frDate, longToday, METHOD_LABELS, shortDate, whatsappLink } from '@shared/format';
+import { apiError, fcfa, initials, isoDate, shortDate, whatsappLink } from '@shared/format';
 
-type Period = 'DAY' | 'WEEK' | 'MONTH';
+interface Goal {
+  n: string;
+  label: string;
+  detail: string;
+  /** Avancement 0–100, ou null quand il n'y a pas d'objectif chiffré */
+  pct: number | null;
+  tone: 'lavender' | 'peach' | 'lime';
+  icon: string;
+}
 
-const PERIODS: { id: Period; label: string; text: string }[] = [
-  { id: 'DAY', label: 'Aujourd’hui', text: 'aujourd’hui' },
-  { id: 'WEEK', label: 'Cette semaine', text: 'cette semaine' },
-  { id: 'MONTH', label: 'Ce mois-ci', text: 'ce mois-ci' },
-];
+interface CalendarDay {
+  n: number;
+  iso: string;
+  out: boolean;
+  today: boolean;
+}
 
-/** Couleurs des moyens de paiement sur fond sombre (barre empilée et légende) */
-const METHOD_COLORS: Record<PaymentMethod, string> = {
-  CASH: '#ffffff',
-  MTN_MOMO: '#c8a47e',
-  MOOV_MONEY: '#8e9bb8',
-  PAYMENT_LINK: '#4a5470',
-};
+const PASTELS = ['peach', 'lavender', 'lime'] as const;
+const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
-/** Hauteur du graphe de fréquentation, en pixels */
-const CHART_HEIGHT = 160;
+/** Taille du mini-graphique d'entrées (viewBox) */
+const SPARK_W = 160;
+const SPARK_H = 70;
 
 /**
- * Tableau de bord du gérant (module 5) : ce qui a été encaissé, qui est à jour, qui doit
- * renouveler, et la fréquentation. Réservé au gérant (contrôlé aussi par le backend).
+ * Tableau de bord du gérant (maquette « Flex Club · E2 ») : bandeau « Ma salle aujourd'hui »
+ * avec trois cartes d'objectif, statistiques, membres à renouveler, calendrier.
+ * Réservé au gérant (contrôlé aussi par le backend).
  */
 @Component({
   selector: 'app-dashboard',
@@ -38,77 +46,151 @@ const CHART_HEIGHT = 160;
 export class Dashboard implements OnInit {
   private readonly api = inject(MovexaApi);
   private readonly router = inject(Router);
+  private readonly store = inject(CurrentUserStore);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly today = longToday();
-  readonly periods = PERIODS;
-  readonly fcfa = fcfa;
-  readonly frDate = frDate;
+  readonly weekdays = WEEKDAYS;
 
-  readonly period = signal<Period>('MONTH');
-  readonly data = signal<DashboardData | null>(null);
+  readonly today = signal<DashboardData | null>(null);
+  readonly month = signal<DashboardData | null>(null);
   readonly error = signal<string | null>(null);
-  readonly hovered = signal<number | null>(null);
-  readonly sent = signal<Set<number>>(new Set());
+  /** Nombre de jours de l'alerte « expire bientôt » (Paramètres) */
+  readonly expiringDays = signal(7);
   private gymName = 'la salle';
 
-  readonly periodText = computed(() => PERIODS.find(p => p.id === this.period())!.text);
+  /** Ligne dont le menu « ··· » est ouvert */
+  readonly openMenu = signal<number | null>(null);
+  readonly sent = signal<ReadonlySet<number>>(new Set());
 
-  readonly methods = computed(() => {
-    const d = this.data();
-    if (!d) return [];
-    return (Object.keys(METHOD_LABELS) as PaymentMethod[]).map(m => {
-      const value = d.paidByMethod[m] ?? 0;
-      return { label: METHOD_LABELS[m], value, color: METHOD_COLORS[m], pct: d.totalPaid ? (value / d.totalPaid) * 100 : 0 };
-    });
+  readonly firstName = computed(() => this.store.user()?.firstName || this.store.user()?.login || '');
+
+  // ---------- Bandeau ----------
+
+  /** Entrées du jour = dernier point de la fréquentation (aujourd'hui) */
+  readonly entriesToday = computed(() => this.today()?.attendance.at(-1)?.count ?? 0);
+  readonly paymentsToday = computed(() => this.today()?.paymentsCount ?? 0);
+
+  readonly headline = computed(() => {
+    const e = this.entriesToday();
+    const p = this.paymentsToday();
+    return `${e} ${e > 1 ? 'entrées' : 'entrée'} et ${p} ${p > 1 ? 'paiements' : 'paiement'} aujourd'hui.`;
   });
 
-  readonly kpis = computed(() => {
-    const d = this.data();
-    if (!d) return [];
+  readonly goals = computed<Goal[]>(() => {
+    const m = this.month();
+    if (!m) return [];
+    const sent = m.remindersSentWeek;
+    const renewed = m.renewedAfterReminderWeek;
+    const renewPct = sent ? Math.round((renewed / sent) * 100) : null;
     return [
-      { label: 'Membres actifs', value: String(d.activeMembers), sub: 'à jour aujourd’hui' },
-      { label: 'Nouveaux inscrits', value: String(d.newMembers), sub: this.periodText() },
-      { label: 'Expirés', value: String(d.expiredMembers), sub: 'non renouvelés à ce jour' },
-      { label: 'Renouvelés après relance', value: `${d.renewedAfterReminderWeek} / ${d.remindersSentWeek}`, sub: 'relances des 7 derniers jours' },
+      {
+        n: '01',
+        label: 'Renouvelés après relance',
+        detail: sent ? `${renewed} sur ${sent} relances (7 jours) | ${renewPct} %` : 'Aucune relance ces 7 derniers jours',
+        pct: renewPct,
+        tone: 'lavender',
+        icon: 'M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5',
+      },
+      {
+        n: '02',
+        label: 'Encaissé ce mois-ci',
+        detail: `${fcfa(m.totalPaid)} · ${m.paymentsCount} ${m.paymentsCount > 1 ? 'paiements' : 'paiement'}`,
+        pct: null,
+        tone: 'peach',
+        icon: 'M2 7h20v12H2zM2 11h20M6 15h4',
+      },
+      {
+        n: '03',
+        label: 'Nouveaux membres',
+        detail: `${m.newMembers} ${m.newMembers > 1 ? 'inscrits' : 'inscrit'} ce mois-ci`,
+        pct: null,
+        tone: 'lime',
+        icon: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6',
+      },
     ];
   });
 
-  /** Échelle du graphe : arrondie à la dizaine supérieure */
-  private readonly chartMax = computed(() => {
-    const max = Math.max(10, ...(this.data()?.attendance.map(a => a.count) ?? [0]));
-    return Math.ceil(max / 10) * 10;
+  // ---------- Statistiques ----------
+
+  /** 7 derniers jours de fréquentation (le backend en renvoie 14) */
+  private readonly week = computed(() => (this.month()?.attendance ?? []).slice(-7));
+
+  readonly averageEntries = computed(() => {
+    const w = this.week();
+    return w.length ? Math.round(w.reduce((s, d) => s + d.count, 0) / w.length) : 0;
   });
 
-  readonly gridLines = computed(() => {
-    const max = this.chartMax();
-    return [0, max / 2, max].map(v => ({ value: v, px: (v / max) * CHART_HEIGHT }));
+  readonly spark = computed(() => {
+    const w = this.week();
+    if (w.length < 2) return null;
+    const max = Math.max(10, ...w.map(d => d.count));
+    const xs = w.map((_, i) => 4 + (i * (SPARK_W - 8)) / (w.length - 1));
+    const ys = w.map(d => SPARK_H - 6 - (d.count / max) * (SPARK_H - 12));
+    let line = `M${xs[0]},${ys[0]}`;
+    for (let i = 1; i < w.length; i++) {
+      const cx = (xs[i - 1] + xs[i]) / 2;
+      line += ` C${cx},${ys[i - 1]} ${cx},${ys[i]} ${xs[i]},${ys[i]}`;
+    }
+    const day = (iso: string) => new Date(iso + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long' });
+    const counts = w.map(d => d.count);
+    const lo = w[counts.indexOf(Math.min(...counts))];
+    const hi = w[counts.indexOf(Math.max(...counts))];
+    return {
+      line,
+      area: `${line} L${xs.at(-1)},${SPARK_H} L${xs[0]},${SPARK_H} Z`,
+      aria: `Entrées des 7 derniers jours : de ${lo.count} ${day(lo.day)} à ${hi.count} ${day(hi.day)}`,
+    };
   });
 
-  readonly days = computed(() => {
-    const list = this.data()?.attendance ?? [];
-    const max = this.chartMax();
-    return list.map((a, i) => {
-      const date = new Date(a.day + 'T12:00:00');
-      const label = date.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' });
-      return {
-        label,
-        tick: i % 2 === 1 ? label : '',
-        px: (a.count / max) * CHART_HEIGHT,
-        current: i === list.length - 1,
-        count: a.count,
-        aria: `${label} : ${a.count} entrées`,
-      };
-    });
+  readonly expiringLabel = computed(() =>
+    this.expiringDays() === 7 ? 'Expirent cette semaine' : `Expirent sous ${this.expiringDays()} jours`,
+  );
+
+  // ---------- À renouveler ----------
+
+  readonly renew = computed(() =>
+    (this.month()?.expiring ?? []).slice(0, 3).map((d, i) => ({
+      due: d,
+      id: d.member.id,
+      name: `${d.member.firstName} ${d.member.lastName}`,
+      ini: initials(d.member.firstName, d.member.lastName),
+      plan: d.member.planName ?? 'Sans formule',
+      date: this.expiryText(d),
+      tone: PASTELS[i % PASTELS.length],
+    })),
+  );
+
+  // ---------- Calendrier ----------
+
+  /** Premier jour du mois affiché */
+  readonly shownMonth = signal(this.firstOfMonth(new Date()));
+  readonly selectedDay = signal(isoDate(new Date()));
+
+  readonly monthLabel = computed(() => {
+    const label = this.shownMonth().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    return label.charAt(0).toUpperCase() + label.slice(1);
   });
 
-  readonly readout = computed(() => {
-    const days = this.days();
-    if (!days.length) return '';
-    const i = this.hovered() ?? days.length - 1;
-    const d = days[i];
-    return `${d.label} : ${d.count} entrées${d.current ? ', journée en cours' : ''}`;
+  readonly calendar = computed<CalendarDay[]>(() => {
+    const first = this.shownMonth();
+    const todayIso = isoDate(new Date());
+    // Semaine du lundi au dimanche
+    const start = new Date(first);
+    start.setDate(1 - ((first.getDay() + 6) % 7));
+    const last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
+    const end = new Date(last);
+    end.setDate(last.getDate() + (6 - ((last.getDay() + 6) % 7)));
+    const days: CalendarDay[] = [];
+    for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const iso = isoDate(d);
+      days.push({ n: d.getDate(), iso, out: d.getMonth() !== first.getMonth(), today: iso === todayIso });
+    }
+    return days;
   });
+
+  readonly selectedLabel = computed(() =>
+    new Date(this.selectedDay() + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }),
+  );
 
   readonly fabActions: FabAction[] = [
     { id: 'member', label: 'Nouveau membre', iconPath: 'M12 5v14M5 12h14' },
@@ -119,40 +201,49 @@ export class Dashboard implements OnInit {
 
   ngOnInit(): void {
     this.load();
-    this.api.settings().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(s => (this.gymName = s.name ?? 'la salle'));
-  }
-
-  setPeriod(p: Period): void {
-    this.period.set(p);
-    this.load();
+    this.api
+      .settings()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(s => {
+        this.gymName = s.name ?? 'la salle';
+        this.expiringDays.set(s.expiringSoonDays);
+      });
   }
 
   load(): void {
-    this.api
-      .dashboard(this.period())
+    forkJoin({ day: this.api.dashboard('DAY'), month: this.api.dashboard('MONTH') })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: d => {
-          this.data.set(d);
+        next: ({ day, month }) => {
+          this.today.set(day);
+          this.month.set(month);
           this.error.set(null);
         },
         error: err => this.error.set(apiError(err, 'Impossible de charger le tableau de bord.')),
       });
   }
 
-  dueDetail(d: DueMember, expired: boolean): string {
-    const m = d.member;
-    const plan = m.planName ?? 'Sans formule';
-    if (!expired) {
-      const when = m.daysLeft === 0 ? 'expire aujourd’hui' : m.daysLeft === 1 ? `expire demain, ${shortDate(m.endDate)}` : `expire le ${shortDate(m.endDate)}`;
-      return `${plan} · ${when}`;
-    }
-    const n = d.reminderCount;
-    return `${plan} · expiré le ${shortDate(m.endDate)} · ${n === 0 ? 'aucune relance' : `relancé ${n} fois`}`;
+  changeMonth(delta: number): void {
+    const m = this.shownMonth();
+    this.shownMonth.set(new Date(m.getFullYear(), m.getMonth() + delta, 1));
   }
 
-  /** Relance WhatsApp immédiate depuis la liste « À renouveler », enregistrée côté serveur */
+  pickDay(day: CalendarDay): void {
+    if (!day.out) this.selectedDay.set(day.iso);
+  }
+
+  dayAria(day: CalendarDay): string {
+    const label = new Date(day.iso + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    return `${day.out ? 'Hors mois, ' : ''}${label}${day.today ? ", aujourd'hui" : ''}`;
+  }
+
+  toggleMenu(id: number): void {
+    this.openMenu.update(current => (current === id ? null : id));
+  }
+
+  /** Relance WhatsApp immédiate depuis « À renouveler », enregistrée côté serveur */
   remind(d: DueMember): void {
+    this.openMenu.set(null);
     const m = d.member;
     const when = m.daysLeft === 0 ? 'aujourd’hui' : m.daysLeft === 1 ? 'demain' : `le ${shortDate(m.endDate)}`;
     const message = `Bonjour ${m.firstName}, votre abonnement ${m.planName ?? ''} à ${this.gymName} se termine ${when}. Renouvelez à l’accueil ou par MoMo. À bientôt !`;
@@ -172,5 +263,16 @@ export class Dashboard implements OnInit {
     };
     const [path, queryParams] = routes[action.id];
     this.router.navigate([path], { queryParams });
+  }
+
+  private expiryText(d: DueMember): string {
+    const left = d.member.daysLeft;
+    if (left === 0) return "Expire aujourd'hui";
+    if (left === 1) return 'Expire demain';
+    return `Expire le ${shortDate(d.member.endDate)}`;
+  }
+
+  private firstOfMonth(d: Date): Date {
+    return new Date(d.getFullYear(), d.getMonth(), 1);
   }
 }

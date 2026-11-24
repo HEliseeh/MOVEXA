@@ -1,0 +1,241 @@
+/* ================================================================
+   AUTH LAYOUT — carte centrée : diaporama + citations à gauche,
+   formulaire à droite (design « Flex Club »)
+   ================================================================ */
+
+.auth-page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 48px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--login-bg);
+  color: var(--login-text);
+  font-family: var(--font-family-login);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 1120px;
+  min-height: 700px;
+  display: flex;
+  flex-wrap: wrap;
+  background: var(--login-card);
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: var(--login-card-shadow);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--login-accent);
+  outline-offset: 2px;
+}
+
+/* ---- Panneau visuel ---- */
+.auth-visual {
+  position: relative;
+  overflow: hidden;
+  flex: 1 1 440px;
+  min-width: 0;
+  min-height: 520px;
+  box-sizing: border-box;
+  padding: 36px;
+  background: var(--login-panel);
+  color: var(--palette-white);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.slide-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transform: scale(1);
+  filter: saturate(0.85) contrast(1.05);
+  transition: opacity 1.2s ease, transform 7s ease-out;
+}
+
+.slide-img.active {
+  opacity: 1;
+  transform: scale(1.06);
+}
+
+.visual-veil {
+  position: absolute;
+  inset: 0;
+  background: rgb(18 38 42 / 0.3);
+}
+
+.visual-gradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgb(18 38 42 / 0.88) 0%,
+    rgb(18 38 42 / 0.1) 30%,
+    rgb(18 38 42 / 0.25) 50%,
+    rgb(18 38 42 / 0.94) 100%
+  );
+}
+
+.brand {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--login-accent-soft);
+  color: var(--login-panel);
+  display: grid;
+  place-items: center;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.brand-name {
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.brand-tagline {
+  font-size: 12px;
+  color: var(--login-on-photo);
+}
+
+.visual-bottom {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.quotes {
+  position: relative;
+  height: 190px;
+}
+
+.quote {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.quote.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.quote-mark {
+  fill: var(--login-accent-soft);
+}
+
+.quote blockquote {
+  margin: 12px 0 10px;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.quote figcaption {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--login-accent-soft);
+}
+
+.slide-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.4);
+  cursor: pointer;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.dot.active {
+  width: 26px;
+  background: var(--palette-white);
+}
+
+.pause {
+  margin-left: 6px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.14);
+  color: var(--palette-white);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.credit {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--login-on-photo-soft);
+}
+
+/* ---- Côté formulaire ---- */
+.auth-form-side {
+  flex: 1 1 440px;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 40px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 600px) {
+  .auth-page { padding: 16px; }
+  .auth-visual { padding: 28px 24px; min-height: 440px; }
+  .quote blockquote { font-size: 20px; }
+  .auth-form-side { padding: 32px 24px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide-img,
+  .quote,
+  .dot {
+    transition: none;
+  }
+}

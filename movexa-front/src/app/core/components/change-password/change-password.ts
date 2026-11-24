@@ -5,8 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { MovexaApi } from '@core/api/movexa-api.service';
 import { ToastService } from '@core/notifications/toast.service';
 import { apiError } from '@shared/format';
-
-const PASSWORD_MIN = 8;
+import { PASSWORD_RULES } from '@shared/password-policy';
 
 /** Pop-up « Changer mon mot de passe », ouverte depuis la barre du haut (tous les rôles). */
 @Component({
@@ -27,7 +26,11 @@ const PASSWORD_MIN = 8;
           <div class="field">
             <label for="cp-new">Nouveau mot de passe</label>
             <input id="cp-new" name="next" class="input-line" type="password" autocomplete="new-password" [(ngModel)]="next" />
-            <span class="help">{{ min }} caractères minimum.</span>
+            <ul class="cp-rules">
+              @for (r of rules; track r.key) {
+                <li [class.cp-ok]="r.test(next)">{{ r.test(next) ? '✓' : '·' }} {{ r.label }}</li>
+              }
+            </ul>
           </div>
           <div class="field">
             <label for="cp-confirm">Confirmer le nouveau mot de passe</label>
@@ -41,7 +44,11 @@ const PASSWORD_MIN = 8;
       </form>
     </div>
   `,
-  styles: `.cp-foot { display: flex; justify-content: flex-end; gap: var(--space-2); }`,
+  styles: `
+    .cp-foot { display: flex; justify-content: flex-end; gap: var(--space-2); }
+    .cp-rules { margin: 6px 0 0; padding: 0; list-style: none; font-size: 0.9em; color: var(--color-text-muted); }
+    .cp-ok { color: var(--color-success-strong, #15803d); }
+  `,
 })
 export class ChangePassword {
   private readonly api = inject(MovexaApi);
@@ -49,7 +56,7 @@ export class ChangePassword {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly closed = output<void>();
-  readonly min = PASSWORD_MIN;
+  readonly rules = PASSWORD_RULES;
 
   current = '';
   next = '';
@@ -64,7 +71,7 @@ export class ChangePassword {
   save(): void {
     if (this.saving()) return;
     if (!this.current) return this.error.set('Saisissez votre mot de passe actuel.');
-    if (this.next.length < PASSWORD_MIN) return this.error.set(`Le nouveau mot de passe doit faire au moins ${PASSWORD_MIN} caractères.`);
+    if (PASSWORD_RULES.some(r => !r.test(this.next))) return this.error.set('Le nouveau mot de passe ne respecte pas toutes les règles.');
     if (this.next !== this.confirm) return this.error.set('Les deux nouveaux mots de passe ne sont pas identiques.');
     if (this.next === this.current) return this.error.set('Le nouveau mot de passe doit être différent de l’actuel.');
 
@@ -78,7 +85,7 @@ export class ChangePassword {
       },
       error: (err: HttpErrorResponse) => {
         this.saving.set(false);
-        // Le gateway répond 400 « Incorrect password » quand le mot de passe actuel est faux
+        // Les règles sont vérifiées avant l'envoi : un 400 du gateway veut donc dire « mot de passe actuel faux »
         this.error.set(err.status === 400 ? 'Mot de passe actuel incorrect.' : apiError(err, 'Changement impossible.'));
       },
     });
