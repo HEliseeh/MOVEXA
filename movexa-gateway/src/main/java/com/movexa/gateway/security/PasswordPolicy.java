@@ -5,7 +5,7 @@ import java.util.regex.Pattern;
 /**
  * Règles d'un nouveau mot de passe (inscription, changement, réinitialisation) :
  * au moins 8 caractères, une majuscule, un chiffre et un caractère spécial.
- * Le front applique les mêmes règles (movexa-front, features/auth/password-policy.ts).
+ * Le front applique les mêmes règles (movexa-front, shared/password-policy.ts).
  */
 public final class PasswordPolicy {
 

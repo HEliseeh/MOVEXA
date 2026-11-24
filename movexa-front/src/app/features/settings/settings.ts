@@ -1,10 +1,11 @@
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { GatewayUser, GymSettings } from '@core/api/api.models';
+import { GymSettings } from '@core/api/api.models';
 import { MovexaApi } from '@core/api/movexa-api.service';
 import { ToastService } from '@core/notifications/toast.service';
 import { apiError } from '@shared/format';
+import { StaffAccounts } from './staff-accounts/staff-accounts';
 
 type Tab = 'gym' | 'users' | 'pay' | 'reminders' | 'prospects';
 type BoolKey = { [K in keyof GymSettings]: GymSettings[K] extends boolean ? K : never }[keyof GymSettings];
@@ -16,7 +17,7 @@ type NumKey = { [K in keyof GymSettings]: GymSettings[K] extends number ? K : ne
  */
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule],
+  imports: [FormsModule, StaffAccounts],
   templateUrl: './settings.html',
   styleUrl: './settings.css',
 })
@@ -74,29 +75,13 @@ export class Settings implements OnInit {
     { key: 'alertThreshold', label: 'Alerte « dernière chance » sous', unit: '%' },
   ];
 
-  readonly permissions: [string, string][] = [
-    ['Créer ou modifier les formules', 'Non'],
-    ['Inscrire un membre', 'Oui'],
-    ['Enregistrer un paiement', 'Oui'],
-    ['Annuler ou corriger un paiement', 'Demande au gérant'],
-    ['Pointer une entrée', 'Oui'],
-    ['Voir le tableau de bord financier', 'Non'],
-    ['Créer des comptes utilisateurs', 'Non'],
-  ];
-
   readonly tab = signal<Tab>('gym');
   readonly settings = signal<GymSettings | null>(null);
-  readonly users = signal<GatewayUser[]>([]);
-  readonly usersError = signal<string | null>(null);
   readonly saving = signal(false);
   readonly saved = signal('');
 
   ngOnInit(): void {
     this.api.settings().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(s => this.settings.set({ ...s }));
-    this.api.users().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: u => this.users.set(u),
-      error: () => this.usersError.set('Liste des comptes indisponible (réservée à l’administrateur du gateway).'),
-    });
   }
 
   setTab(t: Tab): void {
@@ -115,12 +100,6 @@ export class Settings implements OnInit {
 
   toggle(key: BoolKey): void {
     this.set(key, !this.value(key));
-  }
-
-  roleLabel(u: GatewayUser): string {
-    if (u.authorities.includes('ROLE_ADMIN')) return 'Gérant';
-    if (u.authorities.includes('ROLE_RECEPTION')) return 'Réceptionniste';
-    return u.authorities.join(', ');
   }
 
   save(): void {

@@ -1,3 +1,4 @@
+import { CurrentUserStore } from '@core/auth/current-user.store';
 import {
   afterNextRender,
   Component,
@@ -70,6 +71,8 @@ export class MemberForm implements OnInit {
   private readonly members = inject(MembersService);
   private readonly api = inject(MovexaApi);
   private readonly destroyRef = inject(DestroyRef);
+  /** Archiver un membre : réservé au gérant */
+  readonly store = inject(CurrentUserStore);
 
   /** null = création, sinon le membre à modifier */
   readonly member = input<MemberDto | null>(null);

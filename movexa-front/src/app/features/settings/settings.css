@@ -36,21 +36,6 @@
   border-bottom: 1px solid var(--color-border-soft);
 }
 
-.st-users .grid-row,
-.st-perms .grid-row {
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.st-users .grid-row {
-  grid-template-columns: 1.4fr 1fr 1fr 1fr;
-}
-
-.st-perms .grid-row {
-  grid-template-columns: 2fr 1fr;
-  max-width: 640px;
-}
-
 .st-rules .grid-row {
   grid-template-columns: 1.6fr 1fr 80px 100px;
   max-width: 680px;

@@ -1,5 +1,6 @@
 package com.mycompany.myapp.web.rest;
 
+import com.mycompany.myapp.security.AuthoritiesConstants;
 import com.mycompany.myapp.service.MemberImportService;
 import com.mycompany.myapp.service.MemberService;
 import com.mycompany.myapp.service.dto.MemberDTO;
@@ -22,6 +23,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import tech.jhipster.web.util.HeaderUtil;
@@ -105,6 +107,7 @@ public class MemberResource {
 
     /** POST /api/members/import : vérifie (dryRun = true) ou importe une liste lue dans un fichier CSV. */
     @PostMapping("/import")
+    @PreAuthorize(AuthoritiesConstants.IS_MANAGER)
     public ImportResult importMembers(@Valid @RequestBody ImportRequest request) {
         return importService.importMembers(request);
     }
@@ -122,6 +125,7 @@ public class MemberResource {
 
     /** DELETE /api/members/{id} : archive le membre (son historique est conservé). */
     @DeleteMapping("/{id}")
+    @PreAuthorize(AuthoritiesConstants.IS_MANAGER)
     public ResponseEntity<Void> deleteMember(@PathVariable Long id) {
         if (!memberService.archive(id)) {
             return ResponseEntity.notFound().build();

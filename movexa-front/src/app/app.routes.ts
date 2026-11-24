@@ -53,6 +53,8 @@ export const routes: Routes = [
       },
       {
         path: 'members/import',
+        canActivate: [roleGuard],
+        data: { roles: ['ROLE_ADMIN'], fallback: '/members' },
         loadComponent: () => import('@features/members/member-import/member-import').then(m => m.MemberImport),
       },
       {

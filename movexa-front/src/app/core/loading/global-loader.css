@@ -1,0 +1,68 @@
+/* Au-dessus des pop-ups (pour bloquer leurs boutons), sous les toasts (messages de résultat) */
+.gl {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--z-modal) + 50);
+  display: grid;
+  place-items: center;
+  cursor: progress;
+  background: transparent;
+  transition: background-color 200ms ease;
+}
+
+.gl--visible {
+  background: color-mix(in srgb, var(--color-surface, #fff) 55%, transparent);
+  backdrop-filter: blur(1px);
+}
+
+.gl-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--color-surface-raised, #fff);
+  box-shadow: var(--shadow-sm, 0 2px 8px rgb(0 0 0 / 12%));
+  color: var(--color-text);
+  font-weight: 500;
+  animation: gl-in 200ms ease both;
+}
+
+.gl-spinner {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--color-primary, #2563eb) 22%, transparent);
+  border-top-color: var(--color-primary, #2563eb);
+  animation: gl-spin 0.8s linear infinite;
+}
+
+.gl-text {
+  max-width: 280px;
+}
+
+@keyframes gl-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes gl-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gl,
+  .gl-box {
+    transition: none;
+    animation: none;
+  }
+
+  .gl-spinner {
+    animation-duration: 2s;
+  }
+}

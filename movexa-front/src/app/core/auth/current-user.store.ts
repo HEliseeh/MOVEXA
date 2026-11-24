@@ -4,6 +4,9 @@ import { Observable, of, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { User } from './auth.models';
 
+/** Rôles acceptés par l'API métier (back1). Un compte sans l'un d'eux ne peut rien faire. */
+export const STAFF_ROLES = ['ROLE_ADMIN', 'ROLE_RECEPTION'];
+
 @Injectable({ providedIn: 'root' })
 export class CurrentUserStore {
   private http = inject(HttpClient);
@@ -13,6 +16,8 @@ export class CurrentUserStore {
   readonly roles = computed(() => this._user()?.authorities ?? []);
   /** Gérant de la salle (ROLE_ADMIN) : formules, annulations, chiffres, paramètres */
   readonly isManager = computed(() => this.roles().includes('ROLE_ADMIN'));
+  /** Personnel de la salle (gérant ou réceptionniste) : les seuls comptes qui ont accès à l'application */
+  readonly isStaff = computed(() => this.hasAnyRole(STAFF_ROLES));
 
   hasAnyRole(required: string[]): boolean {
     return required.some(r => this.roles().includes(r));

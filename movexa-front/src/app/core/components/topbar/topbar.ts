@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { CurrentUserStore } from '@core/auth/current-user.store';
 import { OfflineService } from '@core/offline/offline.service';
 import { initials } from '@shared/format';
+import { ChangePassword } from '../change-password/change-password';
 
 /** Libellé et couleur de pastille par profil, par ordre de priorité */
 const ROLE_INFO: [string, string, 'peach' | 'lavender' | 'lime' | 'mint'][] = [
@@ -20,6 +21,7 @@ const ROLE_INFO: [string, string, 'peach' | 'lavender' | 'lime' | 'mint'][] = [
 // ---------------------------------------------------------------
 @Component({
   selector: 'app-topbar',
+  imports: [ChangePassword],
   templateUrl: './topbar.html',
   styleUrl: './topbar.css',
 })
@@ -37,6 +39,9 @@ export class Topbar {
   readonly query = signal('');
 
   readonly user = this.store.user;
+
+  /** Pop-up « Changer mon mot de passe » */
+  readonly changingPassword = signal(false);
 
   private readonly role = computed(() => {
     const roles = this.store.roles();

@@ -10,6 +10,9 @@ public final class AuthoritiesConstants {
     public static final String SUPER_ADMIN = "ROLE_SUPER_USER";
 
     public static final String USER = "ROLE_USER";
+
+    /** Réceptionniste de la salle (le gérant a ROLE_ADMIN) */
+    public static final String RECEPTION = "ROLE_RECEPTION";
     
     public static final String COACH = "ROLE_COACH";
     

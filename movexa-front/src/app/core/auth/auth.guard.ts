@@ -13,7 +13,13 @@ export const authGuard: CanActivateFn = () => {
   if (!auth.isLoggedIn()) return toLogin;
 
   return store.load().pipe(
-    map(() => true),
+    // Compte sans rôle gérant ni réceptionniste : l'API lui refuserait tout, on le déconnecte
+    map(() => {
+      if (store.isStaff()) return true;
+      auth.logout();
+      store.clear();
+      return toLogin;
+    }),
     catchError(() => of(toLogin))
   );
 };

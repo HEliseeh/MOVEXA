@@ -4,4 +4,7 @@ jhipster:
   security:
     authentication:
       jwt:
-        base64-secret: NmQ0MzhmNjY3ZDExMGY1MjA4ZWYxMTc2ZTA1ZmIyMDQ2MDJlNzY2N2EzNjc5N2NmY2JiYWExNjMzZDkyNTZhNTFmMjIwM2QzNzY2MzkyZmM2NzgyYmFiMjk3OTZiYTk3NDU5NDA2MzIxN2RiZDRlZjE3ZTUzYzcwYTY1NDI4Y2M=
+        # Clé de signature des jetons de connexion, partagée par le gateway et le back1.
+        # Elle n'est PAS écrite ici : chaque application la lit dans sa variable d'environnement
+        # JWT_BASE64_SECRET (fournie par deploy/.env). Sans elle, les applications refusent de démarrer.
+        base64-secret: ${JWT_BASE64_SECRET}

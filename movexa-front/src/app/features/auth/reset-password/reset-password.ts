@@ -11,7 +11,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '@core/auth/auth.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AuthLayout } from '../auth-layout/auth-layout';
-import { PASSWORD_MAX_LENGTH, PASSWORD_RULES, passwordPolicyValidator } from '../password-policy';
+import { PASSWORD_MAX_LENGTH, PASSWORD_RULES, passwordPolicyValidator } from '@shared/password-policy';
 
 const passwordsMatch = (group: AbstractControl): ValidationErrors | null =>
   group.get('newPassword')?.value === group.get('confirmPassword')?.value ? null : { mismatch: true };

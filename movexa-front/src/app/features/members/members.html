@@ -7,8 +7,10 @@
       <button type="button" class="link" [disabled]="!hasFilters()" (click)="resetFilters()">Réinitialiser les filtres</button>
     </div>
     <div class="actions">
-      <a routerLink="/members/import" class="btn btn--outline">Importer Excel / CSV</a>
-      <button type="button" class="btn btn--dark" (click)="exportCsv()">Exporter les données</button>
+      @if (store.isManager()) {
+        <a routerLink="/members/import" class="btn btn--outline">Importer Excel / CSV</a>
+        <button type="button" class="btn btn--dark" (click)="exportCsv()">Exporter les données</button>
+      }
     </div>
   </header>
 
@@ -20,7 +22,9 @@
               [attr.title]="remindable().length ? null : 'Aucun des membres cochés ne peut être relancé'">
         {{ remindable().length === selectedMembers().length ? 'Relancer' : 'Relancer ' + remindable().length + ' sur ' + selectedMembers().length }}
       </button>
-      <button type="button" class="btn btn--outline" (click)="exportCsv(selectedMembers(), '-selection')">Exporter la sélection</button>
+      @if (store.isManager()) {
+        <button type="button" class="btn btn--outline" (click)="exportCsv(selectedMembers(), '-selection')">Exporter la sélection</button>
+      }
       <button type="button" class="link" (click)="clearSelection()">Tout désélectionner</button>
       @if (notRemindable().length) {
         <span class="selection-note">

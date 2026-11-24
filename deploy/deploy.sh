@@ -4,6 +4,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TARGET="${1:-all}" # all | movexa-back1 | movexa-gateway | movexa-front
 
+if [ ! -f "$ROOT/deploy/.env" ]; then
+  echo "deploy/.env manquant : copiez deploy/.env.example en deploy/.env et remplissez-le." >&2
+  exit 1
+fi
+
 build_jhipster() { # $1 = dossier du projet
   echo ">>> Build de $1"
   (cd "$ROOT/$1" && ./mvnw -ntp -Pprod verify jib:dockerBuild -DskipTests)

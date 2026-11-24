@@ -89,7 +89,7 @@ export class OfflineService {
       for (const item of [...this.pending()]) {
         try {
           await firstValueFrom(
-            this.api.checkIn({ memberId: item.memberId, qrToken: item.qrToken, method: item.method, clientId: item.clientId, checkedAt: item.checkedAt }),
+            this.api.checkIn({ memberId: item.memberId, qrToken: item.qrToken, method: item.method, clientId: item.clientId, checkedAt: item.checkedAt }, true),
           );
           sent++;
         } catch (err) {

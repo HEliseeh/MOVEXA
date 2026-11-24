@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable, shareReplay } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { silent } from '../loading/loading.interceptor';
 import {
   CashClosure,
   CashDay,
@@ -10,7 +11,9 @@ import {
   CoachPayload,
   CheckInRequest,
   Dashboard,
-  GatewayUser,
+  CreateStaffPayload,
+  StaffAccount,
+  UpdateStaffPayload,
   GymSettings,
   ImportResult,
   ImportRow,
@@ -78,10 +81,11 @@ export class MovexaApi {
 
   // ---- Membres (recherche et cache) ----
   searchMembers(q: string, limit = 8): Observable<MemberLite[]> {
-    return this.http.get<MemberLite[]>(`${this.api}/members/search`, { params: { q, limit } });
+    return this.http.get<MemberLite[]>(`${this.api}/members/search`, { params: { q, limit }, context: silent() });
   }
+  /** Copie locale pour le pointage hors ligne : chargée en arrière-plan, sans loader */
   membersLite(): Observable<MemberLite[]> {
-    return this.http.get<MemberLite[]>(`${this.api}/members/lite`);
+    return this.http.get<MemberLite[]>(`${this.api}/members/lite`, { context: silent() });
   }
   importMembers(rows: ImportRow[], updateExisting: boolean, dryRun: boolean): Observable<ImportResult> {
     return this.http.post<ImportResult>(`${this.api}/members/import`, { rows, updateExisting, dryRun });
@@ -116,8 +120,9 @@ export class MovexaApi {
   }
 
   // ---- Pointage ----
-  checkIn(req: CheckInRequest): Observable<CheckIn> {
-    return this.http.post<CheckIn>(`${this.api}/check-ins`, req);
+  /** background = true : envoi de la file hors ligne, sans loader */
+  checkIn(req: CheckInRequest, background = false): Observable<CheckIn> {
+    return this.http.post<CheckIn>(`${this.api}/check-ins`, req, background ? { context: silent() } : {});
   }
   checkInsToday(): Observable<CheckIn[]> {
     return this.http.get<CheckIn[]>(`${this.api}/check-ins/today`);
@@ -146,7 +151,7 @@ export class MovexaApi {
     return this.http.get<Prospect[]>(`${this.api}/prospects`, { params: { scope } });
   }
   searchProspects(q: string): Observable<Prospect[]> {
-    return this.http.get<Prospect[]>(`${this.api}/prospects/search`, { params: { q } });
+    return this.http.get<Prospect[]>(`${this.api}/prospects/search`, { params: { q }, context: silent() });
   }
   prospect(id: number): Observable<Prospect> {
     return this.http.get<Prospect>(`${this.api}/prospects/${id}`);
@@ -192,8 +197,22 @@ export class MovexaApi {
     return this.http.put<GymSettings>(`${this.api}/settings`, s);
   }
 
-  // ---- Comptes utilisateurs (gateway, réservé au gérant) ----
-  users(): Observable<GatewayUser[]> {
-    return this.http.get<GatewayUser[]>(`${environment.apiUrl}/admin/users`, { params: { size: 100 } });
+  // ---- Comptes du personnel (gateway, réservé au gérant) ----
+  staff(): Observable<StaffAccount[]> {
+    return this.http.get<StaffAccount[]>(`${environment.apiUrl}/admin/staff`);
+  }
+  createStaff(payload: CreateStaffPayload): Observable<StaffAccount> {
+    return this.http.post<StaffAccount>(`${environment.apiUrl}/admin/staff`, payload);
+  }
+  updateStaff(id: number, payload: UpdateStaffPayload): Observable<StaffAccount> {
+    return this.http.put<StaffAccount>(`${environment.apiUrl}/admin/staff/${id}`, payload);
+  }
+  resetStaffPassword(id: number, password: string): Observable<void> {
+    return this.http.put<void>(`${environment.apiUrl}/admin/staff/${id}/password`, { password });
+  }
+
+  // ---- Mon compte (gateway) ----
+  changeMyPassword(currentPassword: string, newPassword: string): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/account/change-password`, { currentPassword, newPassword });
   }
 }
