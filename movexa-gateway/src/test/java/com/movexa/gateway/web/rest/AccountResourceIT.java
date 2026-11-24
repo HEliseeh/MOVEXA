@@ -133,7 +133,7 @@ class AccountResourceIT {
     void testRegisterValid() throws Exception {
         ManagedUserVM validUser = new ManagedUserVM();
         validUser.setLogin("test-register-valid");
-        validUser.setPassword("password");
+        validUser.setPassword("Passw0rd!");
         validUser.setFirstName("Alice");
         validUser.setLastName("Test");
         validUser.setEmail("test-register-valid@example.com");
@@ -160,7 +160,7 @@ class AccountResourceIT {
     void testRegisterInvalidLogin() throws Exception {
         ManagedUserVM invalidUser = new ManagedUserVM();
         invalidUser.setLogin("funky-log(n"); // <-- invalid
-        invalidUser.setPassword("password");
+        invalidUser.setPassword("Passw0rd!");
         invalidUser.setFirstName("Funky");
         invalidUser.setLastName("One");
         invalidUser.setEmail("funky@example.com");
@@ -184,7 +184,7 @@ class AccountResourceIT {
 
     static Stream<ManagedUserVM> invalidUsers() {
         return Stream.of(
-            createInvalidUser("bob", "password", "Bob", "Green", "invalid", true), // <-- invalid
+            createInvalidUser("bob", "Passw0rd!", "Bob", "Green", "invalid", true), // <-- invalid
             createInvalidUser("bob", "123", "Bob", "Green", "bob@example.com", true), // password with only 3 digits
             createInvalidUser("bob", null, "Bob", "Green", "bob@example.com", true) // invalid null password
         );
@@ -232,7 +232,7 @@ class AccountResourceIT {
         // First registration
         ManagedUserVM firstUser = new ManagedUserVM();
         firstUser.setLogin("alice");
-        firstUser.setPassword("password");
+        firstUser.setPassword("Passw0rd!");
         firstUser.setFirstName("Alice");
         firstUser.setLastName("Something");
         firstUser.setEmail("alice@example.com");
@@ -298,7 +298,7 @@ class AccountResourceIT {
         // First user
         ManagedUserVM firstUser = new ManagedUserVM();
         firstUser.setLogin("test-register-duplicate-email");
-        firstUser.setPassword("password");
+        firstUser.setPassword("Passw0rd!");
         firstUser.setFirstName("Alice");
         firstUser.setLastName("Test");
         firstUser.setEmail("test-register-duplicate-email@example.com");
@@ -392,7 +392,7 @@ class AccountResourceIT {
     void testRegisterAdminIsIgnored() throws Exception {
         ManagedUserVM validUser = new ManagedUserVM();
         validUser.setLogin("badguy");
-        validUser.setPassword("password");
+        validUser.setPassword("Passw0rd!");
         validUser.setFirstName("Bad");
         validUser.setLastName("Guy");
         validUser.setEmail("badguy@example.com");
@@ -626,13 +626,13 @@ class AccountResourceIT {
             .post()
             .uri("/api/account/change-password")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(om.writeValueAsBytes(new PasswordChangeDTO("1" + currentPassword, "new password")))
+            .bodyValue(om.writeValueAsBytes(new PasswordChangeDTO("1" + currentPassword, "New-passw0rd")))
             .exchange()
             .expectStatus()
             .isBadRequest();
 
         User updatedUser = userRepository.findOneByLogin("change-password-wrong-existing-password").block();
-        assertThat(passwordEncoder.matches("new password", updatedUser.getPassword())).isFalse();
+        assertThat(passwordEncoder.matches("New-passw0rd", updatedUser.getPassword())).isFalse();
         assertThat(passwordEncoder.matches(currentPassword, updatedUser.getPassword())).isTrue();
 
         userService.deleteUser("change-password-wrong-existing-password").block();
@@ -653,13 +653,13 @@ class AccountResourceIT {
             .post()
             .uri("/api/account/change-password")
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(om.writeValueAsBytes(new PasswordChangeDTO(currentPassword, "new password")))
+            .bodyValue(om.writeValueAsBytes(new PasswordChangeDTO(currentPassword, "New-passw0rd")))
             .exchange()
             .expectStatus()
             .isOk();
 
         User updatedUser = userRepository.findOneByLogin("change-password").block();
-        assertThat(passwordEncoder.matches("new password", updatedUser.getPassword())).isTrue();
+        assertThat(passwordEncoder.matches("New-passw0rd", updatedUser.getPassword())).isTrue();
 
         userService.deleteUser("change-password").block();
     }
@@ -814,7 +814,7 @@ class AccountResourceIT {
 
         KeyAndPasswordVM keyAndPassword = new KeyAndPasswordVM();
         keyAndPassword.setKey(user.getResetKey());
-        keyAndPassword.setNewPassword("new password");
+        keyAndPassword.setNewPassword("New-passw0rd");
 
         accountWebTestClient
             .post()
@@ -865,7 +865,7 @@ class AccountResourceIT {
     void testFinishPasswordResetWrongKey() throws Exception {
         KeyAndPasswordVM keyAndPassword = new KeyAndPasswordVM();
         keyAndPassword.setKey("wrong reset key");
-        keyAndPassword.setNewPassword("new password");
+        keyAndPassword.setNewPassword("New-passw0rd");
 
         accountWebTestClient
             .post()

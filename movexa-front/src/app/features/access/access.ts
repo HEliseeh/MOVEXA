@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, ElementRef, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
+import { Component, computed, DestroyRef, effect, ElementRef, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
@@ -8,14 +8,16 @@ import { CheckIn, CheckInMethod, CheckInResult, MemberLite, Payment, Subscriptio
 import { MovexaApi } from '@core/api/movexa-api.service';
 import { OfflineService } from '@core/offline/offline.service';
 import { ToastService } from '@core/notifications/toast.service';
-import { apiError, clientId, frDate, hour, STATE_TONES, todayIso } from '@shared/format';
+import { apiError, clientId, fcfa, frDate, hour, longToday, STATE_TONES, todayIso } from '@shared/format';
 import { PayDialog } from '@shared/pay-dialog/pay-dialog';
-import { FilterOption, matchesAny, MultiFilter } from '@shared/column-filter/column-filter';
 
 /** Une ligne du journal du jour (venue du serveur ou en attente de synchronisation) */
 interface JournalRow {
   key: string;
+  /** Instant ISO du passage */
+  at: string;
   time: string;
+  memberId: number | null;
   name: string;
   method: CheckInMethod;
   result: CheckInResult;
@@ -30,20 +32,36 @@ interface Answer {
   pending: boolean;
 }
 
+type JournalFilter = 'all' | 'allowed' | 'refused';
+
 const RESULT_LABELS: Record<CheckInResult, string> = {
   ALLOWED: 'Autorisé',
   ALLOWED_EXPIRING: 'Autorisé, expire bientôt',
   REFUSED: 'Refusé',
 };
 
+/** Icônes du bloc de réponse (trait, grille de 24) */
+const ICONS = {
+  ok: 'M20 6L9 17l-5-5',
+  soon: 'M12 8v5M12 16.5v.5M10.3 3.9L2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
+  ko: 'M6 6l12 12M18 6L6 18',
+  wait: 'M12 6v6l4 2M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20',
+  idle: 'M3 8V4h5M16 3h5v5M21 16v5h-5M8 21H3v-5M8 12h8',
+};
+
+/** Plage horaire minimale du graphique « Passages par heure » */
+const FIRST_HOUR = 6;
+const LAST_HOUR = 21;
+
 /**
- * Pointage à l'entrée (module 4) : scanner le QR code avec la caméra du téléphone, ou chercher
- * par nom ou téléphone. Réponse immédiate vert / orange / rouge, et encaissement direct.
+ * Contrôle d'accès et présence (maquette « Flex Club · E2 ») : scanner le QR code avec la caméra,
+ * une douchette, ou chercher par nom / téléphone. Réponse immédiate vert / orange / rouge,
+ * encaissement direct, passages par heure et journal du jour.
  * Fonctionne hors ligne grâce à la copie locale des membres (OfflineService).
  */
 @Component({
   selector: 'app-access',
-  imports: [FormsModule, RouterLink, PayDialog, MultiFilter],
+  imports: [FormsModule, RouterLink, PayDialog],
   templateUrl: './access.html',
   styleUrl: './access.css',
 })
@@ -56,7 +74,8 @@ export class Access implements OnInit, OnDestroy {
 
   readonly tones = STATE_TONES;
   readonly resultLabels = RESULT_LABELS;
-  readonly frDate = frDate;
+  readonly today = longToday();
+  readonly fcfa = fcfa;
 
   readonly mode = signal<'scan' | 'search'>('scan');
   readonly query = signal('');
@@ -68,6 +87,8 @@ export class Access implements OnInit, OnDestroy {
   readonly journal = signal<JournalRow[]>([]);
   readonly paying = signal<MemberLite | null>(null);
   readonly waitingLink = signal<Payment | null>(null);
+  readonly paymentsToday = signal<number | null>(null);
+  readonly filter = signal<JournalFilter>('all');
 
   // ---- Caméra ----
   readonly cameraOn = signal(false);
@@ -82,7 +103,9 @@ export class Access implements OnInit, OnDestroy {
   readonly rows = computed<JournalRow[]>(() => {
     const pending = this.offline.pending().map(p => ({
       key: p.clientId,
+      at: p.checkedAt,
       time: hour(p.checkedAt),
+      memberId: p.memberId ?? null,
       name: p.memberName,
       method: p.method,
       result: 'ALLOWED' as CheckInResult,
@@ -91,52 +114,75 @@ export class Access implements OnInit, OnDestroy {
     return [...pending.reverse(), ...this.journal()];
   });
 
-  // ---- Filtres du journal (une colonne = un filtre) ----
-  readonly timeFilter = signal('');
-  readonly nameFilter = signal('');
-  readonly methodFilter = signal<string[]>([]);
-  readonly resultFilter = signal<string[]>([]);
-  readonly syncFilter = signal<string[]>([]);
-  readonly methodOptions: FilterOption[] = [
-    { value: 'QR', label: 'QR' },
-    { value: 'SEARCH', label: 'Recherche' },
-  ];
-  readonly resultOptions: FilterOption[] = (Object.keys(RESULT_LABELS) as CheckInResult[]).map(r => ({ value: r, label: RESULT_LABELS[r] }));
-  readonly syncOptions: FilterOption[] = [
-    { value: 'pending', label: 'En attente' },
-    { value: 'synced', label: 'Synchronisé' },
+  readonly filters: { id: JournalFilter; label: string }[] = [
+    { id: 'all', label: 'Tous' },
+    { id: 'allowed', label: 'Autorisés' },
+    { id: 'refused', label: 'Refusés' },
   ];
 
   readonly filteredRows = computed(() => {
-    const time = this.timeFilter().trim().replace('h', ':');
-    const name = this.nameFilter().trim().toLowerCase();
-    const methods = this.methodFilter();
-    const results = this.resultFilter();
-    const syncs = this.syncFilter();
-    return this.rows().filter(
-      r =>
-        (!time || r.time.startsWith(time)) &&
-        (!name || r.name.toLowerCase().includes(name)) &&
-        matchesAny(methods, r.method) &&
-        matchesAny(results, r.result) &&
-        matchesAny(syncs, r.pending ? 'pending' : 'synced'),
-    );
+    const f = this.filter();
+    if (f === 'all') return this.rows();
+    return this.rows().filter(r => (f === 'refused') === (r.result === 'REFUSED'));
   });
-
-  readonly journalFiltered = computed(
-    () => !!this.timeFilter().trim() || !!this.nameFilter().trim() || [this.methodFilter(), this.resultFilter(), this.syncFilter()].some(f => f.length > 0),
-  );
-
-  resetJournalFilters(): void {
-    this.timeFilter.set('');
-    this.nameFilter.set('');
-    this.methodFilter.set([]);
-    this.resultFilter.set([]);
-    this.syncFilter.set([]);
-  }
 
   readonly entries = computed(() => this.rows().filter(r => r.result !== 'REFUSED').length);
   readonly refused = computed(() => this.rows().filter(r => r.result === 'REFUSED').length);
+  readonly expiring = computed(() => this.rows().filter(r => r.result === 'ALLOWED_EXPIRING').length);
+
+  readonly kpis = computed(() => [
+    { label: 'Entrées aujourd’hui', value: String(this.entries()), hint: 'membres autorisés depuis minuit' },
+    { label: 'Expirent bientôt', value: String(this.expiring()), hint: 'entrés, à qui proposer le renouvellement' },
+    { label: 'Entrées refusées', value: String(this.refused()), hint: 'abonnement expiré ou absent' },
+    {
+      label: 'Paiements aujourd’hui',
+      value: this.paymentsToday() === null ? '–' : String(this.paymentsToday()),
+      hint: 'encaissés à l’accueil ou en ligne',
+    },
+  ]);
+
+  /** Passages autorisés par heure, de 6 h à la dernière heure utile */
+  readonly hours = computed(() => {
+    const counts = new Map<number, number>();
+    for (const r of this.rows()) {
+      if (r.result === 'REFUSED') continue;
+      const h = new Date(r.at).getHours();
+      counts.set(h, (counts.get(h) ?? 0) + 1);
+    }
+    const now = new Date().getHours();
+    const seen = [...counts.keys()];
+    const first = Math.min(FIRST_HOUR, ...seen);
+    const last = Math.max(Math.min(LAST_HOUR, Math.max(now, FIRST_HOUR + 12)), ...seen);
+    const max = Math.max(1, ...counts.values());
+    const bars = [];
+    for (let h = first; h <= last; h++) {
+      const v = counts.get(h) ?? 0;
+      bars.push({ h, label: `${h}h`, v, pct: Math.round((v / max) * 78), current: h === now, tip: `${h} h : ${v} ${v > 1 ? 'entrées' : 'entrée'}` });
+    }
+    return bars;
+  });
+
+  readonly peak = computed(() => {
+    const bars = this.hours();
+    const best = bars.reduce((a, b) => (b.v > a.v ? b : a), bars[0]);
+    return best && best.v > 0 ? best : null;
+  });
+
+  readonly chartLabel = computed(() => {
+    const p = this.peak();
+    return p ? `Entrées par heure aujourd’hui : pic de ${p.v} entrées à ${p.h} h` : 'Aucune entrée aujourd’hui pour l’instant';
+  });
+
+  /** Bloc de réponse : couleur, icône, titre */
+  readonly answerView = computed(() => {
+    if (this.error()) return { tone: 'ko', icon: ICONS.ko, title: 'Pointage impossible' };
+    if (this.waitingLink()) return { tone: 'wait', icon: ICONS.wait, title: 'Paiement en attente' };
+    const a = this.answer();
+    if (!a) return { tone: 'idle', icon: ICONS.idle, title: this.busy() ? 'Vérification…' : 'En attente d’un membre' };
+    if (a.result === 'ALLOWED') return { tone: 'ok', icon: ICONS.ok, title: 'Accès autorisé' };
+    if (a.result === 'ALLOWED_EXPIRING') return { tone: 'soon', icon: ICONS.soon, title: 'Accès autorisé, expire bientôt' };
+    return { tone: 'ko', icon: ICONS.ko, title: 'Accès refusé' };
+  });
 
   constructor() {
     // Recherche : sur le serveur en ligne, dans la copie locale hors ligne
@@ -152,6 +198,11 @@ export class Access implements OnInit, OnDestroy {
         takeUntilDestroyed(),
       )
       .subscribe(list => this.matches.set(list));
+
+    // Retour du réseau : les pointages envoyés reviennent du serveur dans le journal
+    effect(() => {
+      if (this.offline.lastSynced() > 0) this.loadJournal();
+    });
   }
 
   ngOnInit(): void {
@@ -161,7 +212,8 @@ export class Access implements OnInit, OnDestroy {
     }
     this.api.settings().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(s => (this.threshold = s.expiringSoonDays));
     this.loadJournal();
-    // Arrivée depuis l'accueil (« Pointer ») : /access?member=12
+    this.loadPayments();
+    // Arrivée depuis une fiche ou une liste (« Pointer ») : /access?member=12
     const memberId = Number(this.route.snapshot.queryParamMap.get('member'));
     if (memberId) {
       this.mode.set('search');
@@ -183,6 +235,13 @@ export class Access implements OnInit, OnDestroy {
           /* hors ligne : on garde le journal affiché */
         },
       });
+  }
+
+  private loadPayments(): void {
+    this.api
+      .receptionToday()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ next: t => this.paymentsToday.set(t.paymentsToday), error: () => {} });
   }
 
   setMode(mode: 'scan' | 'search'): void {
@@ -252,6 +311,7 @@ export class Access implements OnInit, OnDestroy {
       return;
     }
     this.toast.success(`Paiement enregistré, reçu ${p.receiptNumber}.`);
+    this.paymentsToday.update(n => (n ?? 0) + 1);
     this.checkIn({ memberId: p.memberId }, 'SEARCH');
   }
 
@@ -286,7 +346,7 @@ export class Access implements OnInit, OnDestroy {
         if (code?.data) this.onScanned(code.data);
       }, 250);
     } catch {
-      this.cameraError.set('Caméra refusée ou indisponible. Autorisez la caméra, ou utilisez la recherche par nom.');
+      this.cameraError.set('Caméra refusée ou indisponible. Autorise la caméra, ou cherche le membre par son nom.');
       this.stopCamera();
     }
   }
@@ -314,7 +374,7 @@ export class Access implements OnInit, OnDestroy {
   private checkInOffline(target: { memberId?: number; qrToken?: string }, method: CheckInMethod, known?: MemberLite): void {
     const m = known ?? (target.qrToken ? this.offline.findCachedByQr(target.qrToken) : this.offline.cachedMembers().find(x => x.id === target.memberId));
     if (!m) {
-      this.error.set('Hors ligne : membre absent de la copie locale. Cherchez-le par son nom, ou attendez le retour du réseau.');
+      this.error.set('Hors ligne : membre absent de la copie locale. Cherche-le par son nom, ou attends le retour du réseau.');
       return;
     }
     const state = this.stateOf(m.endDate);
@@ -348,7 +408,7 @@ export class Access implements OnInit, OnDestroy {
       case 'ALLOWED':
         return `${name}, valide jusqu’au ${frDate(endDate)}. Entrée enregistrée à ${hour(new Date().toISOString())}.`;
       case 'ALLOWED_EXPIRING':
-        return `${name}, fin le ${frDate(endDate)}. Entrée enregistrée. Proposez le renouvellement.`;
+        return `${name}, fin le ${frDate(endDate)}. Entrée enregistrée. Propose le renouvellement.`;
       default:
         return endDate ? `${name}, abonnement expiré le ${frDate(endDate)}.` : `${name} n’a pas d’abonnement en cours.`;
     }
@@ -371,6 +431,15 @@ export class Access implements OnInit, OnDestroy {
   }
 
   private toRow(c: CheckIn): JournalRow {
-    return { key: String(c.id), time: hour(c.checkedAt), name: c.memberName, method: c.method, result: c.result, pending: false };
+    return {
+      key: String(c.id),
+      at: c.checkedAt,
+      time: hour(c.checkedAt),
+      memberId: c.memberId,
+      name: c.memberName,
+      method: c.method,
+      result: c.result,
+      pending: false,
+    };
   }
 }
