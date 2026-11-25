@@ -619,9 +619,38 @@ a.tr-name:hover {
   color: var(--ds-ink-muted);
 }
 
-/* ---- Petits écrans ---- */
+.answer-photo {
+  border: 3px solid rgb(255 255 255 / 0.7);
+  border-radius: 50%;
+}
+
+/* ---- Téléphone (maquette « Mobile : pointage ») : pointage d'abord, chiffres sur deux colonnes ---- */
 @media (max-width: 700px) {
   .page {
     padding: 18px 16px 32px;
+  }
+
+  /* Le bloc de pointage passe avant les chiffres */
+  .columns {
+    order: 1;
+  }
+
+  .kpis {
+    order: 2;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .kpi-hint {
+    display: none;
+  }
+
+  .identify {
+    flex-basis: 100%;
+    padding: 16px;
+  }
+
+  .col-right {
+    flex-basis: 100%;
   }
 }

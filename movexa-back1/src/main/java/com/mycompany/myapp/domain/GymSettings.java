@@ -59,6 +59,12 @@ public class GymSettings implements Serializable {
     @Column(name = "expiring_soon_days", nullable = false)
     private Integer expiringSoonDays = 7;
 
+    /** Nombre de personnes que la salle peut accueillir en même temps (facultatif) */
+    @Min(1)
+    @Max(5000)
+    @Column(name = "capacity")
+    private Integer capacity;
+
     // ---- Paiements ----
     @Column(name = "cash_enabled", nullable = false)
     private boolean cashEnabled = true;

@@ -72,6 +72,8 @@ export interface MemberLite {
   state: SubscriptionState;
   daysLeft: number | null;
   qrToken: string;
+  /** Une photo existe (affichée à l'accueil) */
+  hasPhoto?: boolean;
 }
 
 export interface Payment {
@@ -148,6 +150,8 @@ export interface CheckIn {
   activityName: string | null;
   /** Activités incluses dans la formule en cours (seulement dans la réponse à un pointage) */
   includedActivities: string[];
+  /** Le membre a une photo (affichée à l'accueil pour le reconnaître) */
+  memberHasPhoto: boolean;
 }
 
 export interface CheckInRequest {
@@ -322,6 +326,8 @@ export interface GymSettings {
   moovNumber: string | null;
   receiptFooter: string | null;
   expiringSoonDays: number;
+  /** Personnes accueillies en même temps (facultatif) */
+  capacity: number | null;
   cashEnabled: boolean;
   mtnEnabled: boolean;
   moovEnabled: boolean;

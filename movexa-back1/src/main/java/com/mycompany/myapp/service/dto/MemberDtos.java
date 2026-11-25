@@ -26,7 +26,9 @@ public final class MemberDtos {
         LocalDate endDate,
         SubscriptionState state,
         Long daysLeft,
-        String qrToken
+        String qrToken,
+        /** Une photo existe (GET /api/members/{id}/photo) */
+        boolean hasPhoto
     ) {}
 
     public record SubscriptionDTO(

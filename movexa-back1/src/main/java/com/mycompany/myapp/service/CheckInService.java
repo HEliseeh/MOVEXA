@@ -165,7 +165,8 @@ public class CheckInService {
             m.getExpiryDate(),
             MemberViews.daysLeft(m.getExpiryDate()),
             c.getActivityName(),
-            includedActivities
+            includedActivities,
+            m.isHasPhoto()
         );
     }
 }

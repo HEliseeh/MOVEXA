@@ -45,6 +45,8 @@ public final class CheckInDtos {
         /** Activité pointée (null si non précisée) */
         String activityName,
         /** Activités incluses dans la formule en cours : seulement dans la réponse à un pointage, sinon vide */
-        List<String> includedActivities
+        List<String> includedActivities,
+        /** Le membre a une photo (affichée à l'accueil pour le reconnaître) */
+        boolean memberHasPhoto
     ) {}
 }

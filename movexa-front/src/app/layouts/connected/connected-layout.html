@@ -7,6 +7,7 @@
 
   <div class="layout-main">
     <app-topbar class="layout-topbar" [menuOpen]="menuOpen()" (menuToggle)="toggleMenu()" />
+    <app-offline-banner />
 
     <main class="layout-content">
       <router-outlet />

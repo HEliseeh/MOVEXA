@@ -38,7 +38,8 @@ public class MemberViews {
             m.getExpiryDate(),
             settingsService.stateOf(m.getExpiryDate(), threshold),
             daysLeft(m.getExpiryDate()),
-            m.getQrToken()
+            m.getQrToken(),
+            m.isHasPhoto()
         );
     }
 

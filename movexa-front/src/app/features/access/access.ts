@@ -10,6 +10,7 @@ import { OfflineService } from '@core/offline/offline.service';
 import { ToastService } from '@core/notifications/toast.service';
 import { apiError, clientId, fcfa, frDate, hour, longToday, STATE_TONES, todayIso } from '@shared/format';
 import { PayDialog } from '@shared/pay-dialog/pay-dialog';
+import { MemberPhoto } from '@shared/member-photo/member-photo';
 
 /** Une ligne du journal du jour (venue du serveur ou en attente de synchronisation) */
 interface JournalRow {
@@ -74,7 +75,7 @@ const LAST_HOUR = 21;
  */
 @Component({
   selector: 'app-access',
-  imports: [FormsModule, RouterLink, PayDialog],
+  imports: [FormsModule, RouterLink, PayDialog, MemberPhoto],
   templateUrl: './access.html',
   styleUrl: './access.css',
 })
@@ -119,6 +120,14 @@ export class Access implements OnInit, OnDestroy {
   private lastTokenAt = 0;
   private threshold = 7;
 
+  /** Capacité de la salle (Paramètres › Ma salle), pour « Dans la salle maintenant » */
+  readonly capacity = signal<number | null>(null);
+  /** Heure courante, rafraîchie chaque minute (estimation « dans la salle ») */
+  private readonly now = signal(Date.now());
+  private clock: ReturnType<typeof setInterval> | null = null;
+  /** Suivi d'un lien de paiement en attente : vérifié toutes les 5 secondes */
+  private linkPoll: ReturnType<typeof setInterval> | null = null;
+
   readonly rows = computed<JournalRow[]>(() => {
     const pending = this.offline.pending().map(p => ({
       key: p.clientId,
@@ -150,8 +159,24 @@ export class Access implements OnInit, OnDestroy {
   readonly refused = computed(() => this.rows().filter(r => isRefused(r.result)).length);
   readonly expiring = computed(() => this.rows().filter(r => r.result === 'ALLOWED_EXPIRING').length);
 
+  /**
+   * Personnes probablement dans la salle : entrées des 90 dernières minutes (durée habituelle d'une séance).
+   * Estimation, faute de pointage à la sortie.
+   */
+  readonly inside = computed(() => {
+    const since = this.now() - 90 * 60_000;
+    return this.rows().filter(r => !isRefused(r.result) && Date.parse(r.at) >= since).length;
+  });
+
   readonly kpis = computed(() => [
     { label: 'Entrées aujourd’hui', value: String(this.entries()), hint: 'membres autorisés depuis minuit' },
+    {
+      label: 'Dans la salle maintenant',
+      value: this.capacity() ? `${this.inside()} / ${this.capacity()}` : String(this.inside()),
+      hint: this.capacity()
+        ? `occupation ${Math.round((100 * this.inside()) / this.capacity()!)} % · entrés depuis 1 h 30`
+        : 'entrés depuis 1 h 30 (estimation)',
+    },
     { label: 'Expirent bientôt', value: String(this.expiring()), hint: 'entrés, à qui proposer le renouvellement' },
     { label: 'Entrées refusées', value: String(this.refused()), hint: 'expiré, sans abonnement ou activité non incluse' },
     {
@@ -231,7 +256,11 @@ export class Access implements OnInit, OnDestroy {
       this.offline.refreshCache();
       void this.offline.sync();
     }
-    this.api.settings().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(s => (this.threshold = s.expiringSoonDays));
+    this.api.settings().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(s => {
+      this.threshold = s.expiringSoonDays;
+      this.capacity.set(s.capacity ?? null);
+    });
+    this.clock = setInterval(() => this.now.set(Date.now()), 60_000);
     this.loadActivities();
     this.loadJournal();
     this.loadPayments();
@@ -274,6 +303,8 @@ export class Access implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopCamera();
+    this.stopLinkPoll();
+    if (this.clock) clearInterval(this.clock);
   }
 
   loadJournal(): void {
@@ -355,6 +386,42 @@ export class Access implements OnInit, OnDestroy {
   }
 
   /** Encaisser depuis l'écran orange ou rouge */
+  /**
+   * Lien de paiement envoyé : on interroge le serveur toutes les 5 secondes.
+   * Dès que l'agrégateur confirme, l'écran passe au vert et l'entrée est pointée. Abandon après 15 minutes.
+   */
+  private startLinkPoll(p: Payment): void {
+    this.stopLinkPoll();
+    const started = Date.now();
+    this.linkPoll = setInterval(() => {
+      if (Date.now() - started > 15 * 60_000 || this.waitingLink()?.id !== p.id) {
+        this.stopLinkPoll();
+        return;
+      }
+      this.api.paymentLinks().subscribe({
+        next: links => {
+          const now = links.find(l => l.id === p.id);
+          if (!now || now.status === 'PENDING') return;
+          this.stopLinkPoll();
+          this.waitingLink.set(null);
+          if (now.status === 'PAID') {
+            this.toast.success(`Paiement confirmé par l’agrégateur, reçu ${now.receiptNumber}.`);
+            this.paymentsToday.update(n => (n ?? 0) + 1);
+            this.checkIn({ memberId: now.memberId }, 'SEARCH');
+          } else {
+            this.error.set('Le lien de paiement a été annulé.');
+          }
+        },
+        error: () => {},
+      });
+    }, 5000);
+  }
+
+  private stopLinkPoll(): void {
+    if (this.linkPoll) clearInterval(this.linkPoll);
+    this.linkPoll = null;
+  }
+
   openPay(): void {
     const a = this.answer();
     if (a) this.paying.set(a.member);
@@ -365,6 +432,7 @@ export class Access implements OnInit, OnDestroy {
     this.paying.set(null);
     if (p.status === 'PENDING') {
       this.waitingLink.set(p);
+      this.startLinkPoll(p);
       return;
     }
     this.toast.success(`Paiement enregistré, reçu ${p.receiptNumber}.`);
@@ -486,6 +554,7 @@ export class Access implements OnInit, OnDestroy {
       state: c.state,
       daysLeft: c.daysLeft,
       qrToken: '',
+      hasPhoto: c.memberHasPhoto,
     };
   }
 

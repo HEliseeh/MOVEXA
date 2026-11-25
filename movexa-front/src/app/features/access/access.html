@@ -113,6 +113,12 @@
       <!-- Réponse : vert / orange / rouge -->
       <div class="answer" [class]="'answer answer--' + answerView().tone" aria-live="polite">
         <div class="answer-head">
+          @if (answer(); as a) {
+            @if (a.member.hasPhoto && offline.online() && !error() && !waitingLink()) {
+              <app-member-photo class="answer-photo" [memberId]="a.member.id" [hasPhoto]="true"
+                                [firstName]="a.member.firstName" [lastName]="a.member.lastName" [size]="64" />
+            }
+          }
           <span class="answer-icon">
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -125,7 +131,7 @@
               @if (error(); as e) {
                 {{ e }}
               } @else if (waitingLink(); as p) {
-                Lien de paiement de {{ fcfa(p.amount) }} envoyé au {{ p.memberPhone }}. Pointe à nouveau dès la confirmation.
+                Lien de paiement de {{ fcfa(p.amount) }} envoyé au {{ p.memberPhone }}. L’écran passera au vert dès la confirmation.
               } @else if (answer(); as a) {
                 {{ a.text }}
                 @if (a.rights?.length) {
