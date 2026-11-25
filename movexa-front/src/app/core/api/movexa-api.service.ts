@@ -18,6 +18,7 @@ import {
   ImportResult,
   ImportRow,
   MemberLite,
+  NavCounts,
   Payment,
   PaymentRequest,
   Plan,
@@ -184,6 +185,10 @@ export class MovexaApi {
   // ---- Tableau de bord, accueil, paramètres ----
   dashboard(period: 'DAY' | 'WEEK' | 'MONTH'): Observable<Dashboard> {
     return this.http.get<Dashboard>(`${this.api}/dashboard`, { params: { period } });
+  }
+  /** Pastilles du menu, rechargées à chaque changement de page (sans loader) */
+  navCounts(): Observable<NavCounts> {
+    return this.http.get<NavCounts>(`${this.api}/nav-counts`, { context: silent() });
   }
   receptionToday(): Observable<ReceptionToday> {
     return this.http.get<ReceptionToday>(`${this.api}/reception/today`);

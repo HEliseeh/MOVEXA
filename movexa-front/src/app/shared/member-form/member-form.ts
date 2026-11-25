@@ -234,7 +234,8 @@ export class MemberForm implements OnInit {
     };
     const existing = this.member();
     if (!existing) {
-      const p = this.plan();
+      // Le commercial inscrit sans formule : l'encaissement se fait à l'accueil
+      const p = this.store.isDesk() ? this.plan() : null;
       payload.planId = p?.id ?? null;
       payload.paymentMethod = p ? this.method() : null;
       payload.planStartDate = p ? v.startDate || this.today : null;

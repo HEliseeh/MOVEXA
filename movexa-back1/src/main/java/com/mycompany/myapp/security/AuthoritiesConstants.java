@@ -12,11 +12,17 @@ public final class AuthoritiesConstants {
     /** Réceptionniste : inscrit, encaisse, pointe. Le gérant de la salle a ROLE_ADMIN. */
     public static final String RECEPTION = "ROLE_RECEPTION";
 
+    /** Commercial : membres, prospects, relances, statistiques commerciales. N'encaisse pas, ne pointe pas. */
+    public static final String COMMERCIAL = "ROLE_COMMERCIAL";
+
     /** Expression @PreAuthorize réservant une action au gérant. */
     public static final String IS_MANAGER = "hasAuthority('ROLE_ADMIN')";
 
-    /** Personnel de la salle : gérant ou réceptionniste. Seuls ces rôles accèdent à l'API métier. */
-    public static final String[] STAFF = { ADMIN, RECEPTION };
+    /** Expression @PreAuthorize pour le travail à l'accueil (pointage, encaissement, caisse) : gérant ou réceptionniste. */
+    public static final String IS_DESK = "hasAnyAuthority('ROLE_ADMIN','ROLE_RECEPTION')";
+
+    /** Personnel de la salle : seuls ces rôles accèdent à l'API métier. */
+    public static final String[] STAFF = { ADMIN, RECEPTION, COMMERCIAL };
 
     public static final String ANONYMOUS = "ROLE_ANONYMOUS";
 

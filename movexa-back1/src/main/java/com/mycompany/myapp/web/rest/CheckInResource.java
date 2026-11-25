@@ -6,11 +6,15 @@ import com.mycompany.myapp.service.dto.CheckInDtos.CheckInRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import com.mycompany.myapp.security.AuthoritiesConstants;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /** Pointage à l'entrée. */
 @RestController
 @RequestMapping("/api/check-ins")
+/** Travail d'accueil : gérant ou réceptionniste (pas le commercial). */
+@PreAuthorize(AuthoritiesConstants.IS_DESK)
 public class CheckInResource {
 
     private final CheckInService checkInService;

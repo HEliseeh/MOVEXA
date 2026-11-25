@@ -13,6 +13,9 @@ public final class AuthoritiesConstants {
 
     /** Réceptionniste de la salle (le gérant a ROLE_ADMIN) */
     public static final String RECEPTION = "ROLE_RECEPTION";
+
+    /** Commercial : membres, prospects, relances et statistiques commerciales (n'encaisse pas, ne pointe pas) */
+    public static final String COMMERCIAL = "ROLE_COMMERCIAL";
     
     public static final String COACH = "ROLE_COACH";
     

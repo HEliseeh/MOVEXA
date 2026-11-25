@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.*;
 /** Encaissements, liens de paiement, reçus et clôture de caisse. */
 @RestController
 @RequestMapping("/api")
+/** Travail d'accueil : gérant ou réceptionniste (pas le commercial). */
+@PreAuthorize(AuthoritiesConstants.IS_DESK)
 public class PaymentResource {
 
     private final PaymentService paymentService;

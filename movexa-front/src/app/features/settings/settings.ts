@@ -5,9 +5,8 @@ import { GymSettings } from '@core/api/api.models';
 import { MovexaApi } from '@core/api/movexa-api.service';
 import { ToastService } from '@core/notifications/toast.service';
 import { apiError } from '@shared/format';
-import { StaffAccounts } from './staff-accounts/staff-accounts';
 
-type Tab = 'gym' | 'users' | 'pay' | 'reminders' | 'prospects';
+type Tab = 'gym' | 'pay' | 'reminders' | 'prospects';
 type BoolKey = { [K in keyof GymSettings]: GymSettings[K] extends boolean ? K : never }[keyof GymSettings];
 type NumKey = { [K in keyof GymSettings]: GymSettings[K] extends number ? K : never }[keyof GymSettings];
 
@@ -17,7 +16,7 @@ type NumKey = { [K in keyof GymSettings]: GymSettings[K] extends number ? K : ne
  */
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, StaffAccounts],
+  imports: [FormsModule],
   templateUrl: './settings.html',
   styleUrl: './settings.css',
 })
@@ -28,7 +27,6 @@ export class Settings implements OnInit {
 
   readonly tabs: [Tab, string][] = [
     ['gym', 'Ma salle'],
-    ['users', 'Utilisateurs et rôles'],
     ['pay', 'Paiements et reçus'],
     ['reminders', 'Relances'],
     ['prospects', 'Prospects'],

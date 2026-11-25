@@ -2,8 +2,16 @@ import { Routes } from '@angular/router';
 import { authGuard } from '@core/auth/auth.guard';
 import { roleGuard } from '@core/auth/role.guard';
 
-/** Gérant de la salle. Le réceptionniste n'a pas accès aux chiffres ni aux paramètres. */
+/**
+ * Droits par page (le serveur applique les mêmes règles) :
+ * - gérant : tout ;
+ * - réceptionniste : accueil, pointage, encaissements, abonnements, membres, prospects, relances ;
+ * - commercial : membres, prospects, relances (pas de caisse ni de pointage).
+ * Sans le rôle, on est renvoyé vers « fallback ».
+ */
 const MANAGER_ONLY = { roles: ['ROLE_ADMIN'], fallback: '/reception' };
+/** Travail d'accueil : le commercial est renvoyé vers ses prospects */
+const DESK = { roles: ['ROLE_ADMIN', 'ROLE_RECEPTION'], fallback: '/prospects' };
 
 export const routes: Routes = [
   // ---- Pages publiques ----
@@ -37,14 +45,20 @@ export const routes: Routes = [
       },
       {
         path: 'reception',
+        canActivate: [roleGuard],
+        data: DESK,
         loadComponent: () => import('@features/reception/reception').then(m => m.Reception),
       },
       {
         path: 'access',
+        canActivate: [roleGuard],
+        data: DESK,
         loadComponent: () => import('@features/access/access').then(m => m.Access),
       },
       {
         path: 'payments',
+        canActivate: [roleGuard],
+        data: DESK,
         loadComponent: () => import('@features/payments/payments').then(m => m.Payments),
       },
       {
@@ -67,10 +81,26 @@ export const routes: Routes = [
       },
       {
         path: 'subscriptions',
+        canActivate: [roleGuard],
+        data: DESK,
         loadComponent: () => import('@features/subscriptions/subscriptions').then(m => m.Subscriptions),
       },
       {
+        path: 'plans',
+        canActivate: [roleGuard],
+        data: { ...MANAGER_ONLY, tab: 'plans' },
+        loadComponent: () => import('@features/subscriptions/subscriptions').then(m => m.Subscriptions),
+      },
+      {
+        path: 'team',
+        canActivate: [roleGuard],
+        data: MANAGER_ONLY,
+        loadComponent: () => import('@features/team/team').then(m => m.Team),
+      },
+      {
         path: 'coaches',
+        canActivate: [roleGuard],
+        data: MANAGER_ONLY,
         loadComponent: () => import('@features/coaches/coaches').then(m => m.Coaches),
       },
       {
@@ -79,6 +109,8 @@ export const routes: Routes = [
       },
       {
         path: 'receipts/:id',
+        canActivate: [roleGuard],
+        data: DESK,
         loadComponent: () => import('@features/payments/receipt/receipt').then(m => m.ReceiptPage),
       },
       {

@@ -39,6 +39,7 @@ const EMPTY_DRAFT: AccountDraft = {
 export const ROLE_LABELS: Record<StaffRole, string> = {
   MANAGER: 'Gérant',
   RECEPTION: 'Réceptionniste',
+  COMMERCIAL: 'Commercial',
   OTHER: 'Aucun rôle (pas d’accès)',
 };
 
@@ -84,17 +85,25 @@ export class StaffAccounts implements OnInit {
   readonly roleLabels = ROLE_LABELS;
   readonly passwordMin = PASSWORD_MIN;
 
-  /** Ce que peut faire chaque rôle (règles appliquées par le serveur) */
-  readonly permissions: [string, string, string][] = [
-    ['Inscrire et modifier un membre', 'Oui', 'Oui'],
-    ['Encaisser, pointer une entrée, relancer', 'Oui', 'Oui'],
-    ['Clôturer la caisse du jour', 'Oui', 'Oui'],
-    ['Archiver un membre', 'Non', 'Oui'],
-    ['Importer ou exporter la liste des membres', 'Non', 'Oui'],
-    ['Annuler ou confirmer un paiement', 'Non', 'Oui'],
-    ['Tableau de bord et chiffre d’affaires', 'Non', 'Oui'],
-    ['Formules, coachs, paramètres, comptes', 'Non', 'Oui'],
+  /** Ce que peut faire chaque rôle : [action, réceptionniste, commercial, gérant] (règles appliquées par le serveur) */
+  readonly permissions: [string, string, string, string][] = [
+    ['Inscrire et modifier un membre', 'Oui', 'Oui', 'Oui'],
+    ['Suivre les prospects, relancer les membres', 'Oui', 'Oui', 'Oui'],
+    ['Pointer une entrée, encaisser un paiement', 'Oui', 'Non', 'Oui'],
+    ['Clôturer la caisse du jour', 'Oui', 'Non', 'Oui'],
+    ['Archiver un membre', 'Non', 'Non', 'Oui'],
+    ['Importer ou exporter la liste des membres', 'Non', 'Non', 'Oui'],
+    ['Annuler ou confirmer un paiement', 'Non', 'Non', 'Oui'],
+    ['Tableau de bord et chiffre d’affaires', 'Non', 'Non', 'Oui'],
+    ['Formules, coachs, équipe, paramètres', 'Non', 'Non', 'Oui'],
   ];
+
+  /** Rôles proposés dans le formulaire, dans cet ordre */
+  readonly roleChoices: StaffRole[] = ['RECEPTION', 'COMMERCIAL', 'MANAGER'];
+
+  // ---- Filtres de la liste ----
+  readonly query = signal('');
+  readonly roleFilter = signal<StaffRole | ''>('');
 
   readonly accounts = signal<StaffAccount[]>([]);
   readonly loading = signal(true);
@@ -111,9 +120,13 @@ export class StaffAccounts implements OnInit {
   readonly myLogin = computed(() => this.store.user()?.login ?? '');
   readonly inactiveCount = computed(() => this.accounts().filter(a => !a.activated).length);
   readonly visible = computed(() => {
-    const order: Record<StaffRole, number> = { MANAGER: 0, RECEPTION: 1, OTHER: 2 };
+    const order: Record<StaffRole, number> = { MANAGER: 0, RECEPTION: 1, COMMERCIAL: 2, OTHER: 3 };
+    const q = this.query().trim().toLowerCase();
+    const role = this.roleFilter();
     return this.accounts()
       .filter(a => this.showInactive() || a.activated)
+      .filter(a => !role || a.role === role)
+      .filter(a => !q || `${this.fullName(a)} ${a.email ?? ''} ${a.login}`.toLowerCase().includes(q))
       .sort((a, b) => Number(b.activated) - Number(a.activated) || order[a.role] - order[b.role] || a.login.localeCompare(b.login));
   });
   readonly isSelf = computed(() => {

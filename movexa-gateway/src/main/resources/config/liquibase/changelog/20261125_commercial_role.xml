@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Troisième rôle du MVP : commercial (ROLE_COMMERCIAL).
+        Il suit les membres, les prospects et les relances, et voit les statistiques commerciales.
+        Il n'encaisse pas et ne pointe pas.
+    -->
+    <changeSet id="20261125-1" author="elisee">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(*) FROM jhi_authority WHERE name = 'ROLE_COMMERCIAL'</sqlCheck>
+        </preConditions>
+        <insert tableName="jhi_authority">
+            <column name="name" value="ROLE_COMMERCIAL"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

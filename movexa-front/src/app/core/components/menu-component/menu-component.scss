@@ -98,6 +98,23 @@
   opacity: 0.6;
 }
 
+/* Pastille « en attente » (prospects à relancer, abonnements qui finissent) */
+.nav-badge {
+  flex: 0 0 auto;
+  min-width: 22px;
+  height: 20px;
+  box-sizing: border-box;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--ds-pastel-peach, #fde3c0);
+  color: #12262a;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .nav-lock {
   flex: 0 0 auto;
 }

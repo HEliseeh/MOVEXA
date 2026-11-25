@@ -31,6 +31,7 @@ public class DashboardResource {
     }
 
     @GetMapping("/reception/today")
+    @PreAuthorize(AuthoritiesConstants.IS_DESK)
     public ReceptionTodayDTO receptionToday() {
         return dashboardService.receptionToday();
     }

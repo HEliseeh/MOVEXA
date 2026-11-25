@@ -193,7 +193,8 @@ public class StaffService {
         return switch (role) {
             case MANAGER -> Set.of(AuthoritiesConstants.ADMIN, AuthoritiesConstants.USER);
             case RECEPTION -> Set.of(AuthoritiesConstants.RECEPTION, AuthoritiesConstants.USER);
-            case OTHER -> throw bad("Choisissez le rôle Gérant ou Réceptionniste.", "rolerequired");
+            case COMMERCIAL -> Set.of(AuthoritiesConstants.COMMERCIAL, AuthoritiesConstants.USER);
+            case OTHER -> throw bad("Choisissez le rôle Gérant, Réceptionniste ou Commercial.", "rolerequired");
         };
     }
 
@@ -201,7 +202,9 @@ public class StaffService {
         Set<String> names = u.getAuthorities().stream().map(Authority::getName).collect(java.util.stream.Collectors.toSet());
         StaffRole role = names.contains(AuthoritiesConstants.ADMIN)
             ? StaffRole.MANAGER
-            : names.contains(AuthoritiesConstants.RECEPTION) ? StaffRole.RECEPTION : StaffRole.OTHER;
+            : names.contains(AuthoritiesConstants.RECEPTION)
+                ? StaffRole.RECEPTION
+                : names.contains(AuthoritiesConstants.COMMERCIAL) ? StaffRole.COMMERCIAL : StaffRole.OTHER;
         return new StaffAccount(
             u.getId(),
             u.getLogin(),

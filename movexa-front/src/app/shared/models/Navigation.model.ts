@@ -13,11 +13,16 @@ export interface MenuStep {
   groupStart?: boolean;
   /** Rôles qui peuvent ouvrir l'entrée (aucun = tout le monde). Les autres la voient grisée, avec un cadenas. */
   roles?: string[];
+  /** Pastille : nombre d'éléments qui attendent une action (voir NavCounts). Un groupe fermé affiche la somme. */
+  badge?: NavBadge;
 }
+
+/** Compteurs affichés dans le menu (GET /api/nav-counts) */
+export type NavBadge = 'prospectsToday' | 'expiringSoon';
 
 export const MANAGER = 'ROLE_ADMIN';
 export const RECEPTION = 'ROLE_RECEPTION';
-/** Profil commercial du design — pas encore créé côté backend */
+/** Commercial : membres, prospects, relances, statistiques commerciales */
 export const COMMERCIAL = 'ROLE_COMMERCIAL';
 
 /** Nom des profils dans l'info-bulle « Réservé au profil … » */
@@ -30,6 +35,7 @@ export const ROLE_SHORT_LABELS: Record<string, string> = {
 const G = [MANAGER];
 const GR = [MANAGER, RECEPTION];
 const GC = [MANAGER, COMMERCIAL];
+const home = 'M3 11l9-8 9 8M5 9.5V21h14V9.5M10 21v-6h4v6';
 
 const ICONS = {
   dash: 'M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z',
@@ -62,122 +68,48 @@ const soon = (id: string, label: string, roles?: string[]): MenuStep => ({
 });
 
 // ---------------------------------------------------------------
-// Menu latéral (maquette « Flex Club · E2 », composant Sidebar) :
-// 5 domaines séparés par un trait, 13 modules, sous-éléments repliés.
+// Menu latéral (maquette « Flex Club · MVP », composant Sidebar) :
+// 3 domaines séparés par un trait, sous-éléments repliés.
 // Le menu est le même pour tous : ce que le profil ne peut pas
 // ouvrir reste visible, grisé, avec un cadenas.
+// Les pages pas encore développées sont grisées « Bientôt ».
 // ---------------------------------------------------------------
 export const MENU_ITEMS: MenuStep[] = [
-  // ---- Pilotage ----
+  // ---- Pilotage et accueil ----
   { id: 'dashboard', label: 'Tableau de bord', iconPath: ICONS.dash, route: ['/dashboard'], roles: G },
+  { id: 'reception', label: 'Accueil', iconPath: home, route: ['/reception'], roles: GR },
 
-  // ---- Opérations du club ----
+  // ---- Clients, planning, encaissement ----
   {
-    id: 'access',
-    label: 'Accès et présence',
-    iconPath: ICONS.scan,
-    route: ['/access'],
-    roles: GR,
+    id: 'm-clients',
+    label: 'Clients',
+    iconPath: ICONS.members,
+    route: [],
     groupStart: true,
+    children: [
+      { id: 'access', label: 'Accès et présence', route: ['/access'], roles: GR },
+      { id: 'members', label: 'Membres', route: ['/members'] },
+      { id: 'prospects', label: 'Prospects', route: ['/prospects'], badge: 'prospectsToday' },
+      { id: 'reminders', label: 'Relances', route: ['/reminders'] },
+      { id: 'import', label: 'Importer un fichier', route: ['/members/import'], roles: G },
+    ],
   },
-  { id: 'members', label: 'Membres', iconPath: ICONS.members, route: ['/members'] },
   {
     id: 'm-planning',
-    label: 'Planning et cours',
+    label: 'Planning et abonnements',
     iconPath: ICONS.calendar,
     route: [],
     children: [
       soon('planning', 'Planning du club', GR),
       { id: 'coaches', label: 'Cours et coachs', route: ['/coaches'], roles: G },
-      soon('bookings', 'Réservations', GR),
+      { id: 'subscriptions', label: 'Abonnements et échéances', route: ['/subscriptions'], roles: GR, badge: 'expiringSoon' },
+      { id: 'plans', label: 'Formules et tarifs', route: ['/plans'], roles: G },
     ],
   },
-  { ...soon('equipment', 'Équipements', G), iconPath: ICONS.dumbbell },
-
-  // ---- Commercial et marketing ----
-  {
-    id: 'm-crm',
-    label: 'Prospection',
-    iconPath: ICONS.funnel,
-    route: [],
-    groupStart: true,
-    children: [
-      { id: 'prospects', label: 'Prospects', route: ['/prospects'] },
-      soon('visits', 'Visites et essais'),
-      soon('sales-path', 'Parcours commercial', G),
-    ],
-  },
-  {
-    id: 'm-loyalty',
-    label: 'Fidélisation',
-    iconPath: ICONS.heart,
-    route: [],
-    children: [
-      { id: 'reminders', label: 'Relances', route: ['/reminders'] },
-      soon('action-plans', 'Plans d’action', GC),
-      soon('tasks', 'Tâches assignées', GC),
-    ],
-  },
-  {
-    id: 'm-com',
-    label: 'Communication',
-    iconPath: ICONS.megaphone,
-    route: [],
-    children: [
-      soon('campaigns', 'Campagnes SMS et e-mail', GC),
-      soon('notifications', 'Notifications', G),
-      soon('website', 'Site vitrine', G),
-    ],
-  },
-
-  // ---- Ventes et finances ----
-  {
-    id: 'm-cash',
-    label: 'Caisse',
-    iconPath: ICONS.cash,
-    route: [],
-    groupStart: true,
-    children: [
-      { id: 'payments', label: 'Encaissements', route: ['/payments'], roles: GR },
-      soon('pos', 'Point de vente', GR),
-      soon('safe', 'Coffre et clôture', GR),
-    ],
-  },
-  { ...soon('shop', 'Boutique en ligne', G), iconPath: ICONS.bag },
-  {
-    id: 'm-accounting',
-    label: 'Comptabilité',
-    iconPath: ICONS.book,
-    route: [],
-    children: [soon('accounting', 'Gestion comptable', G)],
-  },
+  { id: 'payments', label: 'Encaissements', iconPath: ICONS.cash, route: ['/payments'], roles: GR },
 
   // ---- Équipe et pilotage ----
-  {
-    id: 'm-staff',
-    label: 'Personnel',
-    iconPath: ICONS.team,
-    route: [],
-    groupStart: true,
-    children: [soon('staff', 'Équipe et rôles', G), soon('staff-planning', 'Plannings et congés', G)],
-  },
-  {
-    id: 'm-stats',
-    label: 'Statistiques',
-    iconPath: ICONS.chart,
-    route: [],
-    children: [soon('stats-management', 'Gestion', G), soon('stats-sales', 'Commerciales', GC)],
-  },
-  {
-    id: 'm-settings',
-    label: 'Réglages',
-    iconPath: ICONS.settings,
-    route: [],
-    children: [
-      { id: 'settings', label: 'Paramètres', route: ['/settings'], roles: G },
-      soon('sites', 'Mes salles', G),
-      soon('exports', 'Exports de données', G),
-      soon('support', 'Aide et support'),
-    ],
-  },
+  { id: 'team', label: 'Équipe et rôles', iconPath: ICONS.team, route: ['/team'], roles: G, groupStart: true },
+  { ...soon('stats', 'Statistiques', GC), iconPath: ICONS.chart },
+  { id: 'settings', label: 'Paramètres', iconPath: ICONS.settings, route: ['/settings'], roles: G },
 ];

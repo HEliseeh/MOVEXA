@@ -40,7 +40,7 @@
         </div>
         <div class="mf-done-actions">
           <a class="btn btn-primary" [href]="welcomeLink(m)" target="_blank" rel="noopener">Envoyer par WhatsApp</a>
-          @if (m.payment?.status === 'PAID') {
+          @if (m.payment?.status === 'PAID' && store.isDesk()) {
             <a class="btn btn-outline" [routerLink]="['/receipts', m.payment!.id]">Voir le reçu</a>
           }
           <a class="btn btn-outline" [routerLink]="['/members', m.id]">Fiche et QR code</a>
@@ -96,7 +96,11 @@
           </div>
         </section>
 
-        @if (!isEdit()) {
+        @if (!isEdit() && !store.isDesk()) {
+          <p class="help">L’abonnement et le paiement se font à l’accueil : le membre est inscrit sans formule.</p>
+        }
+        <!-- Abonnement et paiement : seulement à l'accueil (le serveur refuse un encaissement par le commercial) -->
+        @if (!isEdit() && store.isDesk()) {
           <section class="mf-section">
             <h3 class="mf-section-title">Abonnement et paiement</h3>
             <div class="mf-grid">

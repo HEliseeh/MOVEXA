@@ -74,4 +74,7 @@
     </svg>
   }
   <span class="nav-label">{{ item().label }}</span>
+  @if (badgeCount(); as n) {
+    <span class="nav-badge" [attr.aria-label]="n + ' en attente'">{{ n > 99 ? '99+' : n }}</span>
+  }
 </ng-template>
