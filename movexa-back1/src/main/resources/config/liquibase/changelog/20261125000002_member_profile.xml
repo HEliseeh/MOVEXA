@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Lot 3 MVP : inscription en une fois et fiche membre.
+        - member.custom_access + member_activity : droits choisis activité par activité (sinon ceux de la formule) ;
+        - member.notes_updated_by / notes_updated_at : auteur et date de la dernière note ;
+        - member.has_photo + member_photo : photo facultative (table à part pour ne pas alourdir les listes) ;
+        - subscription.frozen_days + subscription_freeze : gel d'un abonnement (voyage, blessure).
+    -->
+    <changeSet id="20261125000002-1" author="elisee">
+        <addColumn tableName="member">
+            <column name="custom_access" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+            <column name="notes_updated_by" type="varchar(100)"/>
+            <column name="notes_updated_at" type="timestamp"/>
+            <column name="has_photo" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+        </addColumn>
+
+        <createTable tableName="member_activity">
+            <column name="member_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="activity_id" type="bigint"><constraints nullable="false"/></column>
+        </createTable>
+        <addPrimaryKey tableName="member_activity" columnNames="member_id, activity_id" constraintName="pk_member_activity"/>
+        <addForeignKeyConstraint baseTableName="member_activity" baseColumnNames="member_id" constraintName="fk_member_activity_member"
+                                 referencedTableName="member" referencedColumnNames="id" onDelete="CASCADE"/>
+        <addForeignKeyConstraint baseTableName="member_activity" baseColumnNames="activity_id" constraintName="fk_member_activity_activity"
+                                 referencedTableName="activity" referencedColumnNames="id" onDelete="CASCADE"/>
+
+        <createTable tableName="member_photo">
+            <column name="member_id" type="bigint">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="data" type="bytea"><constraints nullable="false"/></column>
+            <column name="content_type" type="varchar(50)"><constraints nullable="false"/></column>
+            <column name="updated_at" type="timestamp"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="member_photo" baseColumnNames="member_id" constraintName="fk_member_photo_member"
+                                 referencedTableName="member" referencedColumnNames="id" onDelete="CASCADE"/>
+
+        <addColumn tableName="subscription">
+            <column name="frozen_days" type="integer" defaultValueNumeric="0"><constraints nullable="false"/></column>
+        </addColumn>
+
+        <createTable tableName="subscription_freeze">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="subscription_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="days" type="integer"><constraints nullable="false"/></column>
+            <column name="reason" type="varchar(200)"/>
+            <column name="created_by" type="varchar(100)"/>
+            <column name="created_at" type="timestamp"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="subscription_freeze" baseColumnNames="subscription_id" constraintName="fk_subscription_freeze_subscription"
+                                 referencedTableName="subscription" referencedColumnNames="id" onDelete="CASCADE"/>
+        <createIndex tableName="subscription_freeze" indexName="idx_subscription_freeze_subscription"><column name="subscription_id"/></createIndex>
+    </changeSet>
+</databaseChangeLog>

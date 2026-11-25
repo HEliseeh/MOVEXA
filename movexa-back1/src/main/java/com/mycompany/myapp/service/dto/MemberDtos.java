@@ -36,7 +36,18 @@ public final class MemberDtos {
         LocalDate startDate,
         LocalDate endDate,
         boolean cancelled,
-        Instant createdAt
+        Instant createdAt,
+        /** Jours ajoutés par des gels */
+        int frozenDays
+    ) {}
+
+    /** Gel d'un abonnement, pour l'historique de la fiche. */
+    public record FreezeDTO(Long id, String planName, int days, String reason, String createdBy, Instant createdAt) {}
+
+    /** Geler l'abonnement en cours : la fin est repoussée de « days » jours. */
+    public record FreezeRequest(
+        @NotNull @Min(value = 1, message = "Au moins 1 jour") @Max(value = 90, message = "90 jours au maximum") Integer days,
+        @Size(max = 200) String reason
     ) {}
 
     /** Tout ce qu'affiche la fiche membre, en un seul appel. */
@@ -46,7 +57,14 @@ public final class MemberDtos {
         List<PaymentDTO> payments,
         /** Jours de présence (entrées autorisées) sur les 30 derniers jours. */
         List<LocalDate> visitDays,
-        List<ReminderDtos.ReminderDTO> reminders
+        List<ReminderDtos.ReminderDTO> reminders,
+        /** Heures (0–23, heure du Bénin) des entrées des 30 derniers jours, pour « vient surtout le soir » */
+        List<Integer> visitHours,
+        /** La formule en cours permet le gel, et l'abonnement est encore valable */
+        boolean canFreeze,
+        /** Jours de gel encore possibles sur l'abonnement en cours */
+        int freezeDaysLeft,
+        List<FreezeDTO> freezes
     ) {}
 
     // ---- Import Excel / CSV ----

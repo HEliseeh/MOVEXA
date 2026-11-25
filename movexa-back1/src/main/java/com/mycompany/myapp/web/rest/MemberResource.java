@@ -5,6 +5,7 @@ import com.mycompany.myapp.security.SecurityUtils;
 import com.mycompany.myapp.service.MemberImportService;
 import com.mycompany.myapp.service.MemberService;
 import com.mycompany.myapp.service.dto.MemberDTO;
+import com.mycompany.myapp.service.dto.MemberDtos.FreezeRequest;
 import com.mycompany.myapp.service.dto.MemberDtos.ImportRequest;
 import com.mycompany.myapp.service.dto.MemberDtos.ImportResult;
 import com.mycompany.myapp.service.dto.MemberDtos.MemberLiteDTO;
@@ -22,7 +23,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -93,6 +96,44 @@ public class MemberResource {
     @GetMapping("/{id}/overview")
     public ResponseEntity<MemberOverviewDTO> overview(@PathVariable Long id) {
         return ResponseUtil.wrapOrNotFound(memberService.overview(id));
+    }
+
+    /** POST /api/members/{id}/freeze : gel de l'abonnement en cours (accueil). */
+    @PostMapping("/{id}/freeze")
+    @PreAuthorize(AuthoritiesConstants.IS_DESK)
+    public MemberDTO freeze(@PathVariable Long id, @Valid @RequestBody FreezeRequest request) {
+        return memberService.freeze(id, request);
+    }
+
+    /** GET /api/members/{id}/photo : la photo (image), 404 s'il n'y en a pas. */
+    @GetMapping("/{id}/photo")
+    public ResponseEntity<byte[]> photo(@PathVariable Long id) {
+        return memberService
+            .photo(id)
+            .map(p ->
+                ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(p.getContentType()))
+                    .cacheControl(CacheControl.noCache())
+                    .body(p.getData())
+            )
+            .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /** PUT /api/members/{id}/photo : corps = l'image (JPEG, PNG ou WebP), réduite par le navigateur. */
+    @PutMapping(value = "/{id}/photo", consumes = { "image/jpeg", "image/png", "image/webp" })
+    public ResponseEntity<Void> savePhoto(
+        @PathVariable Long id,
+        @RequestBody byte[] data,
+        @RequestHeader(HttpHeaders.CONTENT_TYPE) String contentType
+    ) {
+        memberService.savePhoto(id, data, contentType);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/photo")
+    public ResponseEntity<Void> deletePhoto(@PathVariable Long id) {
+        memberService.deletePhoto(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("")

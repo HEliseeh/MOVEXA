@@ -168,6 +168,8 @@ export interface Subscription {
   endDate: string;
   cancelled: boolean;
   createdAt: string;
+  /** Jours ajoutés par des gels */
+  frozenDays: number;
 }
 
 export interface ReminderQueueItem {

@@ -95,3 +95,42 @@
   flex-wrap: wrap;
   gap: var(--space-2);
 }
+
+/* ---- Photo (facultative) ---- */
+.mf-photo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-3, 12px);
+}
+
+.mf-photo-img {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: none;
+}
+
+.mf-photo-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--space-3, 12px);
+}
+
+.mf-photo-text .help {
+  flex-basis: 100%;
+}
+
+.mf-photo-btn {
+  cursor: pointer;
+}
+
+/* ---- Activités choisies une par une ---- */
+.mf-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px var(--space-4);
+  margin: var(--space-3, 12px) 0 6px;
+}

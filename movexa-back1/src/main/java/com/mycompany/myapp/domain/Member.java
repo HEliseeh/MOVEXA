@@ -4,7 +4,10 @@ import com.mycompany.myapp.domain.enumeration.MemberStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -88,6 +91,29 @@ public class Member implements Serializable {
     /** Un membre « supprimé » est archivé : ses paiements et passages restent consultables. */
     @Column(name = "archived", nullable = false)
     private boolean archived = false;
+
+    /**
+     * true : le membre a ses propres droits, choisis activité par activité (« activities ») ;
+     * false : il a les activités de sa formule en cours.
+     */
+    @Column(name = "custom_access", nullable = false)
+    private boolean customAccess = false;
+
+    /** Activités autorisées quand customAccess = true (sinon ignorées). */
+    @ManyToMany
+    @JoinTable(name = "member_activity", joinColumns = @JoinColumn(name = "member_id"), inverseJoinColumns = @JoinColumn(name = "activity_id"))
+    private Set<Activity> activities = new LinkedHashSet<>();
+
+    /** Qui a écrit la dernière version des notes, et quand. */
+    @Column(name = "notes_updated_by", length = 100)
+    private String notesUpdatedBy;
+
+    @Column(name = "notes_updated_at")
+    private Instant notesUpdatedAt;
+
+    /** Une photo existe dans member_photo (chargée seulement à l'affichage de la fiche). */
+    @Column(name = "has_photo", nullable = false)
+    private boolean hasPhoto = false;
 
     @PrePersist
     void onCreate() {

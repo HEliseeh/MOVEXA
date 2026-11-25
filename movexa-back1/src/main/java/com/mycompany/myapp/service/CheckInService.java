@@ -21,6 +21,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -89,8 +90,10 @@ public class CheckInService {
         Activity activity = request.activityId() == null
             ? null
             : activityRepository.findById(request.activityId()).orElseThrow(() -> new NotFoundException("Activité introuvable"));
+        // Droits : ceux choisis pour le membre, sinon ceux de sa formule en cours
         Plan plan = currentPlan(member);
-        boolean activityIncluded = activity == null || plan == null || plan.getActivities().contains(activity);
+        Set<Activity> rights = member.isCustomAccess() ? member.getActivities() : plan != null ? plan.getActivities() : null;
+        boolean activityIncluded = activity == null || rights == null || rights.contains(activity);
 
         CheckIn c = new CheckIn();
         c.setMember(member);
@@ -112,7 +115,7 @@ public class CheckInService {
         if (!c.getResult().isRefused() && (member.getLastVisitDate() == null || member.getLastVisitDate().isBefore(day))) {
             member.setLastVisitDate(day);
         }
-        return toDto(c, threshold, includedActivities(plan));
+        return toDto(c, threshold, includedActivities(rights));
     }
 
     /** Passages du jour, du plus récent au plus ancien. */
@@ -135,10 +138,9 @@ public class CheckInService {
         return subscriptionRepository.findFirstByMemberIdAndCancelledFalseOrderByEndDateDesc(member.getId()).map(Subscription::getPlan).orElse(null);
     }
 
-    private static List<String> includedActivities(Plan plan) {
-        if (plan == null) return List.of();
-        return plan
-            .getActivities()
+    private static List<String> includedActivities(Set<Activity> rights) {
+        if (rights == null) return List.of();
+        return rights
             .stream()
             .filter(Activity::isActive)
             .sorted(Comparator.comparingInt(Activity::getPosition).thenComparing(Activity::getId))
