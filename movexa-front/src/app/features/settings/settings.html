@@ -29,6 +29,17 @@
                      [ngModel]="s.capacity" (ngModelChange)="set('capacity', $event || null)" />
               <span class="help">Affiche le taux d’occupation sur l’écran Accès et présence. Facultatif.</span>
             </div>
+            <div class="field">
+              <label for="st-revgoal">Objectif d’encaissement du mois (FCFA)</label>
+              <input id="st-revgoal" class="input-line" type="number" min="0" step="10000" placeholder="Ex. 3200000"
+                     [ngModel]="s.revenueGoal" (ngModelChange)="set('revenueGoal', $event || null)" />
+              <span class="help">Affiché au tableau de bord avec l’avancement. Facultatif.</span>
+            </div>
+            <div class="field">
+              <label for="st-memgoal">Objectif de nouveaux membres par mois</label>
+              <input id="st-memgoal" class="input-line" type="number" min="0" max="10000" placeholder="Ex. 20"
+                     [ngModel]="s.newMembersGoal" (ngModelChange)="set('newMembersGoal', $event || null)" />
+            </div>
           </div>
         }
 

@@ -5,6 +5,8 @@ import { environment } from '../../../environments/environment';
 import { silent } from '../loading/loading.interceptor';
 import {
   Activity,
+  PublicCard,
+  PublicReceipt,
   ManagementStats,
   SalesStats,
   StatsPeriod,
@@ -154,6 +156,18 @@ export class MovexaApi {
   }
   receipt(id: number): Observable<Receipt> {
     return this.http.get<Receipt>(`${this.api}/payments/${id}/receipt`);
+  }
+  /** Jeton du lien public du reçu (créé au premier partage) */
+  shareReceipt(id: number): Observable<{ token: string }> {
+    return this.http.post<{ token: string }>(`${this.api}/payments/${id}/share`, {}, { context: silent() });
+  }
+
+  // ---- Pages publiques (carte et reçu du membre, sans connexion) ----
+  publicCard(token: string): Observable<PublicCard> {
+    return this.http.get<PublicCard>(`${this.api}/public/cards/${encodeURIComponent(token)}`);
+  }
+  publicReceipt(token: string): Observable<PublicReceipt> {
+    return this.http.get<PublicReceipt>(`${this.api}/public/receipts/${encodeURIComponent(token)}`);
   }
   cashDay(date?: string): Observable<CashDay> {
     const params = date ? new HttpParams().set('date', date) : undefined;

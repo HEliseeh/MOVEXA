@@ -179,6 +179,14 @@ public class PaymentService {
         markPaid(p);
     }
 
+    /** Lien public du reçu : le jeton est créé au premier partage puis réutilisé. */
+    public String shareToken(Long id) {
+        Payment p = repository.findById(id).orElseThrow(() -> new NotFoundException("Paiement introuvable"));
+        if (p.getStatus() != PaymentStatus.PAID) throw new BadRequestAlertException("Seul un paiement encaissé a un reçu à partager.", "payment", "notpaid");
+        if (p.getShareToken() == null) p.setShareToken(java.util.UUID.randomUUID().toString().replace("-", ""));
+        return p.getShareToken();
+    }
+
     @Transactional(readOnly = true)
     public ReceiptDTO receipt(Long id) {
         Payment p = repository.findWithDetailsById(id).orElseThrow(() -> new NotFoundException("Paiement introuvable"));

@@ -25,6 +25,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     Optional<Payment> findOneByLinkToken(String linkToken);
 
+    @EntityGraph(attributePaths = { "member", "member.user", "subscription" })
+    Optional<Payment> findWithDetailsByShareToken(String shareToken);
+
     Optional<Payment> findOneByTransactionId(String transactionId);
 
     @EntityGraph(attributePaths = { "subscription" })

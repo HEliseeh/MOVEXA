@@ -281,6 +281,12 @@ export interface Dashboard {
   expiring: DueMember[];
   expiredCount: number;
   expired: DueMember[];
+  /** Abonnements arrivés à échéance depuis le début de la période, et ceux déjà renouvelés */
+  renewalsDue: number;
+  renewalsDone: number;
+  /** Objectifs du mois (Paramètres), null si non fixés */
+  revenueGoal: number | null;
+  newMembersGoal: number | null;
 }
 
 export interface ReceptionToday {
@@ -328,6 +334,9 @@ export interface GymSettings {
   expiringSoonDays: number;
   /** Personnes accueillies en même temps (facultatif) */
   capacity: number | null;
+  /** Objectifs du mois affichés au tableau de bord (facultatifs) */
+  revenueGoal: number | null;
+  newMembersGoal: number | null;
   cashEnabled: boolean;
   mtnEnabled: boolean;
   moovEnabled: boolean;
@@ -528,4 +537,35 @@ export interface SalesStats {
   remindersWhatsapp: number;
   lapsedReminded: number;
   lapsedCameBack: number;
+}
+
+// ---- Pages publiques envoyées au membre (sans connexion) ----
+export interface PublicCard {
+  firstName: string;
+  lastName: string | null;
+  memberNumber: string | null;
+  gymName: string | null;
+  endDate: string | null;
+  state: SubscriptionState | null;
+  qrToken: string;
+}
+
+export interface PublicReceipt {
+  number: string | null;
+  status: PaymentStatus;
+  paidAt: string | null;
+  amount: number;
+  registrationFee: number | null;
+  method: PaymentMethod;
+  memberName: string;
+  planName: string | null;
+  validFrom: string | null;
+  validTo: string | null;
+  agent: string | null;
+  gymName: string | null;
+  gymAddress: string | null;
+  gymPhone: string | null;
+  footer: string | null;
+  /** Jeton de la carte du membre (bouton « Mon QR code »), absent si le reçu est annulé */
+  cardToken: string | null;
 }

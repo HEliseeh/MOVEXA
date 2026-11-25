@@ -9,6 +9,7 @@ import com.mycompany.myapp.repository.CheckInRepository;
 import com.mycompany.myapp.repository.MemberRepository;
 import com.mycompany.myapp.repository.PaymentRepository;
 import com.mycompany.myapp.repository.ReminderRepository;
+import com.mycompany.myapp.repository.SubscriptionRepository;
 import com.mycompany.myapp.service.dto.DashboardDtos.*;
 import com.mycompany.myapp.service.dto.MemberDtos.MemberLiteDTO;
 import com.mycompany.myapp.service.dto.ReminderDtos.ReminderStatsDTO;
@@ -33,6 +34,8 @@ public class DashboardService {
     private final ReminderService reminderService;
     private final ProspectService prospectService;
     private final MemberViews views;
+    private final SubscriptionRepository subscriptionRepository;
+    private final SettingsService settingsService;
 
     public DashboardService(
         PaymentRepository paymentRepository,
@@ -41,8 +44,12 @@ public class DashboardService {
         ReminderRepository reminderRepository,
         ReminderService reminderService,
         ProspectService prospectService,
-        MemberViews views
+        MemberViews views,
+        SubscriptionRepository subscriptionRepository,
+        SettingsService settingsService
     ) {
+        this.subscriptionRepository = subscriptionRepository;
+        this.settingsService = settingsService;
         this.paymentRepository = paymentRepository;
         this.memberRepository = memberRepository;
         this.checkInRepository = checkInRepository;
@@ -84,6 +91,13 @@ public class DashboardService {
         long expiredCount = memberRepository.countByArchivedFalseAndExpiryDateLessThan(today);
         List<Member> expired = memberRepository.findExpired(today, PageRequest.of(0, 5));
         ReminderStatsDTO reminders = reminderService.stats();
+        long renewalsDue = 0;
+        long renewalsDone = 0;
+        for (Object[] row : subscriptionRepository.findDueWithRenewals(from, today)) {
+            renewalsDue++;
+            if (((Number) row[1]).longValue() > 0) renewalsDone++;
+        }
+        var settings = settingsService.get();
 
         return new DashboardDTO(
             p,
@@ -101,7 +115,11 @@ public class DashboardService {
             expiring.size(),
             expiring.stream().limit(5).map(m -> new DueMember(views.lite(m, threshold), reminderCounts.getOrDefault(m.getId(), 0L))).toList(),
             expiredCount,
-            expired.stream().map(m -> new DueMember(views.lite(m, threshold), reminderCounts.getOrDefault(m.getId(), 0L))).toList()
+            expired.stream().map(m -> new DueMember(views.lite(m, threshold), reminderCounts.getOrDefault(m.getId(), 0L))).toList(),
+            renewalsDue,
+            renewalsDone,
+            settings.getRevenueGoal(),
+            settings.getNewMembersGoal()
         );
     }
 

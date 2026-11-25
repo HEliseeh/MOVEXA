@@ -31,6 +31,16 @@ export const routes: Routes = [
       import('@features/auth/reset-password/reset-password').then(m => m.ResetPassword),
   },
 
+  // ---- Pages envoyées au membre par WhatsApp (sans compte, sans menu) ----
+  {
+    path: 'carte/:token',
+    loadComponent: () => import('@features/public/member-card/member-card').then(m => m.MemberCard),
+  },
+  {
+    path: 'recu/:token',
+    loadComponent: () => import('@features/public/public-receipt/public-receipt').then(m => m.PublicReceiptPage),
+  },
+
   // ---- Zone authentifiée (layout avec menu) ----
   {
     path: '',

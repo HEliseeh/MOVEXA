@@ -165,7 +165,7 @@ export class MemberDetail implements OnInit {
 
   /** Envoi du QR code : le texte part par WhatsApp, l'image est enregistrée pour la joindre */
   qrLink(m: MemberDto): string {
-    return whatsappLink(m.phone, `Bonjour ${m.firstName}, voici votre carte de membre ${this.gymName()} (N° ${m.memberNumber}). Présentez ce QR code à l’accueil à chaque visite.`);
+    return whatsappLink(m.phone, `Bonjour ${m.firstName}, voici votre carte de membre ${this.gymName()} (N° ${m.memberNumber}). Présentez ce QR code à l’accueil à chaque visite : ${window.location.origin}/carte/${m.qrToken}`);
   }
 
   downloadQr(m: MemberDto): void {
