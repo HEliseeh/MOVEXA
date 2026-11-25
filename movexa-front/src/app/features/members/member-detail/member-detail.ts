@@ -1,4 +1,5 @@
 import { Component, computed, DestroyRef, inject, input, OnInit, signal, viewChild } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { MemberLite, Payment } from '@core/api/api.models';
@@ -9,6 +10,7 @@ import { ToastService } from '@core/notifications/toast.service';
 import { CancelPayment } from '@shared/cancel-payment/cancel-payment';
 import {
   addDays,
+  apiError,
   dayHour,
   fcfa,
   frDate,
@@ -23,6 +25,7 @@ import {
 import { PayDialog } from '@shared/pay-dialog/pay-dialog';
 import { QrCode } from '@shared/qr-code/qr-code';
 import { MemberForm } from '@shared/member-form/member-form';
+import { MemberPhoto } from '@shared/member-photo/member-photo';
 
 type Tab = 'pay' | 'visits' | 'reminders';
 
@@ -32,7 +35,7 @@ type Tab = 'pay' | 'visits' | 'reminders';
  */
 @Component({
   selector: 'app-member-detail',
-  imports: [RouterLink, PayDialog, QrCode, MemberForm, CancelPayment],
+  imports: [RouterLink, FormsModule, PayDialog, QrCode, MemberForm, CancelPayment, MemberPhoto],
   templateUrl: './member-detail.html',
   styleUrl: './member-detail.css',
 })
@@ -53,6 +56,15 @@ export class MemberDetail implements OnInit {
   readonly editing = signal(false);
   readonly cancelling = signal<Payment | null>(null);
   readonly gymName = signal('la salle');
+  /** Recharge la photo après une modification */
+  readonly photoVersion = signal(0);
+
+  // ---- Gel de l'abonnement ----
+  readonly freezing = signal(false);
+  readonly freezeDays = signal<number | null>(14);
+  readonly freezeReason = signal('');
+  readonly freezeError = signal<string | null>(null);
+  readonly freezeSaving = signal(false);
 
   readonly fcfa = fcfa;
   readonly frDate = frDate;
@@ -97,6 +109,20 @@ export class MemberDetail implements OnInit {
     return { ...current, pct, remaining };
   });
 
+  /** « surtout le soir, entre 17 h et 19 h » : le créneau de 2 heures le plus fréquent */
+  readonly usualSlot = computed(() => {
+    const hours = this.data()?.visitHours ?? [];
+    if (hours.length < 3) return null;
+    const count = new Array(24).fill(0) as number[];
+    hours.forEach(h => count[h]++);
+    let best = 0;
+    for (let h = 1; h < 23; h++) if (count[h] + count[h + 1] > count[best] + count[best + 1]) best = h;
+    const share = (count[best] + count[best + 1]) / hours.length;
+    if (share < 0.4) return 'à des heures variées';
+    const moment = best < 12 ? 'le matin' : best < 17 ? 'l’après-midi' : 'le soir';
+    return `surtout ${moment}, entre ${best} h et ${best + 2} h`;
+  });
+
   /** Les 30 derniers jours, du plus ancien au plus récent : venu ou absent */
   readonly visitGrid = computed(() => {
     const days = new Set(this.data()?.visitDays ?? []);
@@ -139,7 +165,7 @@ export class MemberDetail implements OnInit {
 
   /** Envoi du QR code : le texte part par WhatsApp, l'image est enregistrée pour la joindre */
   qrLink(m: MemberDto): string {
-    return whatsappLink(m.phone, `Bonjour ${m.firstName}, voici votre carte de membre ${this.gymName()} (N° ${m.memberNumber}). Présentez ce QR code à l’accueil à chaque visite.`);
+    return whatsappLink(m.phone, `Bonjour ${m.firstName}, voici votre carte de membre ${this.gymName()} (N° ${m.memberNumber}). Présentez ce QR code à l’accueil à chaque visite : ${window.location.origin}/carte/${m.qrToken}`);
   }
 
   downloadQr(m: MemberDto): void {
@@ -166,7 +192,49 @@ export class MemberDetail implements OnInit {
 
   onSaved(): void {
     this.editing.set(false);
+    this.photoVersion.update(v => v + 1);
     this.toast.success('Modifications enregistrées.');
     this.load();
+  }
+
+  openFreeze(): void {
+    this.freezeDays.set(Math.min(14, this.data()?.freezeDaysLeft ?? 14));
+    this.freezeReason.set('');
+    this.freezeError.set(null);
+    this.freezing.set(true);
+  }
+
+  /** Nouvelle fin si on gèle « freezeDays » jours */
+  readonly freezeEnd = computed(() => {
+    const m = this.member();
+    const days = this.freezeDays() ?? 0;
+    return m?.expiryDate && days > 0 ? addDays(m.expiryDate, days) : null;
+  });
+
+  saveFreeze(): void {
+    const m = this.member();
+    const days = Number(this.freezeDays());
+    const max = this.data()?.freezeDaysLeft ?? 0;
+    if (!m || this.freezeSaving()) return;
+    if (!Number.isInteger(days) || days < 1 || days > max) {
+      this.freezeError.set(`Indiquez un nombre de jours entre 1 et ${max}.`);
+      return;
+    }
+    this.freezeSaving.set(true);
+    this.members
+      .freeze(m.id, days, this.freezeReason().trim() || null)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: updated => {
+          this.freezeSaving.set(false);
+          this.freezing.set(false);
+          this.toast.success(`Abonnement gelé ${days} jour${days > 1 ? 's' : ''} : nouvelle fin le ${frDate(updated.expiryDate)}.`);
+          this.load();
+        },
+        error: err => {
+          this.freezeSaving.set(false);
+          this.freezeError.set(apiError(err, 'Gel impossible.'));
+        },
+      });
   }
 }

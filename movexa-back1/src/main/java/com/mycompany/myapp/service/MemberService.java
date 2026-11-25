@@ -1,20 +1,28 @@
 package com.mycompany.myapp.service;
 
+import com.mycompany.myapp.domain.Activity;
 import com.mycompany.myapp.domain.CheckIn;
 import com.mycompany.myapp.domain.Coach;
 import com.mycompany.myapp.domain.Member;
+import com.mycompany.myapp.domain.MemberPhoto;
 import com.mycompany.myapp.domain.Payment;
 import com.mycompany.myapp.domain.Plan;
+import com.mycompany.myapp.domain.Subscription;
+import com.mycompany.myapp.domain.SubscriptionFreeze;
 import com.mycompany.myapp.domain.User;
-import com.mycompany.myapp.domain.enumeration.CheckInResult;
 import com.mycompany.myapp.domain.enumeration.MemberStatus;
 import com.mycompany.myapp.domain.enumeration.UserStatus;
+import com.mycompany.myapp.repository.ActivityRepository;
 import com.mycompany.myapp.repository.CheckInRepository;
+import com.mycompany.myapp.repository.MemberPhotoRepository;
 import com.mycompany.myapp.repository.MemberRepository;
 import com.mycompany.myapp.repository.PlanRepository;
+import com.mycompany.myapp.repository.SubscriptionFreezeRepository;
 import com.mycompany.myapp.repository.SubscriptionRepository;
 import com.mycompany.myapp.repository.UserRepository;
 import com.mycompany.myapp.service.dto.MemberDTO;
+import com.mycompany.myapp.service.dto.MemberDtos.FreezeDTO;
+import com.mycompany.myapp.service.dto.MemberDtos.FreezeRequest;
 import com.mycompany.myapp.service.dto.MemberDtos.MemberLiteDTO;
 import com.mycompany.myapp.service.dto.MemberDtos.MemberOverviewDTO;
 import com.mycompany.myapp.service.dto.MemberDtos.SubscriptionDTO;
@@ -25,10 +33,14 @@ import com.mycompany.myapp.web.rest.errors.NotFoundException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Period;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -60,6 +72,16 @@ public class MemberService {
     private final ReminderService reminderService;
     private final ProspectService prospectService;
     private final CoachService coachService;
+    private final ActivityRepository activityRepository;
+    private final MemberPhotoRepository photoRepository;
+    private final SubscriptionFreezeRepository freezeRepository;
+    private final SubscriptionService subscriptionService;
+
+    /** Gel total possible par abonnement */
+    public static final int MAX_FREEZE_DAYS = 90;
+    /** Photo : taille maximale après réduction dans le navigateur */
+    private static final int MAX_PHOTO_BYTES = 600 * 1024;
+    private static final Set<String> PHOTO_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
 
     public MemberService(
         MemberRepository memberRepository,
@@ -72,7 +94,11 @@ public class MemberService {
         SubscriptionRepository subscriptionRepository,
         ReminderService reminderService,
         ProspectService prospectService,
-        CoachService coachService
+        CoachService coachService,
+        ActivityRepository activityRepository,
+        MemberPhotoRepository photoRepository,
+        SubscriptionFreezeRepository freezeRepository,
+        SubscriptionService subscriptionService
     ) {
         this.memberRepository = memberRepository;
         this.userRepository = userRepository;
@@ -85,6 +111,10 @@ public class MemberService {
         this.reminderService = reminderService;
         this.prospectService = prospectService;
         this.coachService = coachService;
+        this.activityRepository = activityRepository;
+        this.photoRepository = photoRepository;
+        this.freezeRepository = freezeRepository;
+        this.subscriptionService = subscriptionService;
     }
 
     /** Liste paginée des membres non archivés, avec statut et nombre de visites sur 30 jours. */
@@ -103,7 +133,7 @@ public class MemberService {
 
     @Transactional(readOnly = true)
     public Optional<MemberDTO> findOne(Long id) {
-        return memberRepository.findWithUserById(id).map(m -> views.enrich(memberMapper.toDto(m), views.threshold()));
+        return memberRepository.findWithUserById(id).map(m -> withAccess(views.enrich(memberMapper.toDto(m), views.threshold()), m));
     }
 
     /** Recherche instantanée par nom, numéro de membre ou téléphone. */
@@ -144,17 +174,50 @@ public class MemberService {
                 List<CheckIn> checkIns = checkInRepository.findAllByMemberIdAndCheckedAtAfterOrderByCheckedAtDesc(id, since);
                 List<LocalDate> days = checkIns
                     .stream()
-                    .filter(c -> c.getResult() != CheckInResult.REFUSED)
+                    .filter(c -> !c.getResult().isRefused())
                     .map(c -> Dates.dayOf(c.getCheckedAt()))
                     .distinct()
                     .toList();
                 dto.setVisitsLast30Days(days.size());
+                withAccess(dto, m);
+                List<Integer> hours = checkIns
+                    .stream()
+                    .filter(c -> !c.getResult().isRefused())
+                    .map(c -> c.getCheckedAt().atZone(Dates.ZONE).getHour())
+                    .toList();
                 List<SubscriptionDTO> subs = subscriptionRepository
                     .findAllByMemberIdOrderByStartDateDesc(id)
                     .stream()
-                    .map(s -> new SubscriptionDTO(s.getId(), s.getPlanName(), s.getPrice(), s.getStartDate(), s.getEndDate(), s.isCancelled(), s.getCreatedAt()))
+                    .map(s ->
+                        new SubscriptionDTO(
+                            s.getId(),
+                            s.getPlanName(),
+                            s.getPrice(),
+                            s.getStartDate(),
+                            s.getEndDate(),
+                            s.isCancelled(),
+                            s.getCreatedAt(),
+                            s.getFrozenDays()
+                        )
+                    )
                     .toList();
-                return new MemberOverviewDTO(dto, subs, paymentService.listForMember(id), days, reminderService.forMember(id));
+                Subscription current = freezable(m);
+                List<FreezeDTO> freezes = freezeRepository
+                    .findAllByMemberId(id)
+                    .stream()
+                    .map(f -> new FreezeDTO(f.getId(), f.getSubscription().getPlanName(), f.getDays(), f.getReason(), f.getCreatedBy(), f.getCreatedAt()))
+                    .toList();
+                return new MemberOverviewDTO(
+                    dto,
+                    subs,
+                    paymentService.listForMember(id),
+                    days,
+                    reminderService.forMember(id),
+                    hours,
+                    current != null,
+                    current != null ? MAX_FREEZE_DAYS - current.getFrozenDays() : 0,
+                    freezes
+                );
             });
     }
 
@@ -183,6 +246,8 @@ public class MemberService {
         member.setStatus(MemberStatus.ACTIVE);
         memberMapper.update(member, dto);
         applyCoach(member, dto.getCoachId());
+        applyAccess(member, dto);
+        auditNotes(member, null);
         applyDerivedFields(member);
 
         member = memberRepository.saveAndFlush(member);
@@ -198,7 +263,7 @@ public class MemberService {
             prospectService.markConverted(dto.getProspectId(), member.getId());
         }
 
-        MemberDTO result = views.enrich(memberMapper.toDto(member), views.threshold());
+        MemberDTO result = withAccess(views.enrich(memberMapper.toDto(member), views.threshold()), member);
         if (payment != null) result.setPayment(paymentService.toDto(payment));
         return result;
     }
@@ -211,11 +276,78 @@ public class MemberService {
             .map(member -> {
                 checkEmailAvailable(dto.getEmail(), member.getUser().getId());
                 checkPhoneAvailable(dto.getPhone(), member.getId());
+                String notesBefore = member.getUser().getComment();
                 memberMapper.update(member, dto);
                 applyCoach(member, dto.getCoachId());
+                applyAccess(member, dto);
+                auditNotes(member, notesBefore);
                 applyDerivedFields(member);
-                return views.enrich(memberMapper.toDto(member), views.threshold());
+                return withAccess(views.enrich(memberMapper.toDto(member), views.threshold()), member);
             });
+    }
+
+    /**
+     * Gel de l'abonnement en cours (voyage, blessure) : la fin est repoussée de « days » jours.
+     * Possible seulement si la formule l'autorise, que l'abonnement est encore valable,
+     * et dans la limite de MAX_FREEZE_DAYS jours par abonnement.
+     */
+    public MemberDTO freeze(Long memberId, FreezeRequest request) {
+        Member member = memberRepository
+            .findWithUserById(memberId)
+            .filter(m -> !m.isArchived())
+            .orElseThrow(() -> new NotFoundException("Membre introuvable"));
+        Subscription sub = freezable(member);
+        if (sub == null) {
+            throw new BadRequestAlertException(
+                "Gel impossible : l'abonnement est expiré ou sa formule n'autorise pas le gel",
+                ENTITY_NAME,
+                "freezenotallowed"
+            );
+        }
+        int left = MAX_FREEZE_DAYS - sub.getFrozenDays();
+        if (request.days() > left) {
+            throw new BadRequestAlertException("Gel trop long : il reste " + left + " jour(s) de gel possibles sur cet abonnement", ENTITY_NAME, "freezetoolong");
+        }
+        sub.setEndDate(sub.getEndDate().plusDays(request.days()));
+        sub.setFrozenDays(sub.getFrozenDays() + request.days());
+        SubscriptionFreeze f = new SubscriptionFreeze();
+        f.setSubscription(sub);
+        f.setDays(request.days());
+        f.setReason(StringUtils.hasText(request.reason()) ? request.reason().trim() : null);
+        f.setCreatedBy(MemberViews.currentAgent());
+        freezeRepository.save(f);
+        subscriptionService.syncMember(member);
+        return withAccess(views.enrich(memberMapper.toDto(member), views.threshold()), member);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<MemberPhoto> photo(Long memberId) {
+        return photoRepository.findById(memberId);
+    }
+
+    /** Photo déjà réduite par le navigateur (JPEG, PNG ou WebP, 600 Ko au plus). */
+    public void savePhoto(Long memberId, byte[] data, String contentType) {
+        Member member = memberRepository.findById(memberId).orElseThrow(() -> new NotFoundException("Membre introuvable"));
+        String type = contentType == null ? "" : contentType.split(";")[0].trim().toLowerCase();
+        if (!PHOTO_TYPES.contains(type)) {
+            throw new BadRequestAlertException("Format de photo non accepté (JPEG, PNG ou WebP)", ENTITY_NAME, "phototype");
+        }
+        if (data == null || data.length == 0 || data.length > MAX_PHOTO_BYTES) {
+            throw new BadRequestAlertException("Photo vide ou trop lourde (600 Ko au plus)", ENTITY_NAME, "photosize");
+        }
+        MemberPhoto photo = photoRepository.findById(memberId).orElseGet(MemberPhoto::new);
+        photo.setMemberId(memberId);
+        photo.setData(data);
+        photo.setContentType(type);
+        photo.setUpdatedAt(Instant.now());
+        photoRepository.save(photo);
+        member.setHasPhoto(true);
+    }
+
+    public void deletePhoto(Long memberId) {
+        Member member = memberRepository.findById(memberId).orElseThrow(() -> new NotFoundException("Membre introuvable"));
+        photoRepository.deleteById(memberId);
+        member.setHasPhoto(false);
     }
 
     /**
@@ -296,6 +428,73 @@ public class MemberService {
     }
 
     /** Champs calculés : âge (depuis la date de naissance) et chiffres du téléphone. */
+    /**
+     * Droits d'accès : ceux de la formule, ou une liste choisie pour ce membre.
+     * Champ absent du formulaire (import, ancien écran) : on ne change rien.
+     */
+    private void applyAccess(Member member, MemberDTO dto) {
+        if (dto.getCustomAccess() == null) return;
+        member.setCustomAccess(dto.getCustomAccess());
+        member.getActivities().clear();
+        if (!dto.getCustomAccess()) return;
+        List<Long> ids = dto.getActivityIds() == null ? List.of() : dto.getActivityIds();
+        if (ids.isEmpty()) {
+            throw new BadRequestAlertException(
+                "Cochez au moins une activité, sinon son QR code sera refusé partout",
+                ENTITY_NAME,
+                "noactivity"
+            );
+        }
+        List<Activity> found = activityRepository.findAllById(new LinkedHashSet<>(ids));
+        if (found.size() != new LinkedHashSet<>(ids).size()) {
+            throw new NotFoundException("Activité introuvable");
+        }
+        member.getActivities().addAll(found);
+    }
+
+    /** Auteur et date de la note quand son texte change */
+    private void auditNotes(Member member, String before) {
+        String after = member.getUser().getComment();
+        if (Objects.equals(before, after)) return;
+        boolean empty = !StringUtils.hasText(after);
+        member.setNotesUpdatedBy(empty ? null : MemberViews.currentAgent());
+        member.setNotesUpdatedAt(empty ? null : Instant.now());
+    }
+
+    /** Ajoute au DTO les droits du membre : les siens, ou ceux de sa formule en cours */
+    private MemberDTO withAccess(MemberDTO dto, Member member) {
+        Set<Activity> rights;
+        if (member.isCustomAccess()) {
+            rights = member.getActivities();
+            dto.setActivityIds(rights.stream().map(Activity::getId).toList());
+        } else {
+            Plan plan = subscriptionRepository
+                .findFirstByMemberIdAndCancelledFalseOrderByEndDateDesc(member.getId())
+                .map(Subscription::getPlan)
+                .orElse(null);
+            rights = plan == null ? Set.of() : plan.getActivities();
+            dto.setActivityIds(List.of());
+        }
+        dto.setActivityNames(
+            rights
+                .stream()
+                .sorted(Comparator.comparingInt(Activity::getPosition).thenComparing(Activity::getId))
+                .map(Activity::getName)
+                .toList()
+        );
+        return dto;
+    }
+
+    /** Abonnement en cours qu'on peut geler : non annulé, encore valable, formule qui l'autorise, jours restants */
+    private Subscription freezable(Member member) {
+        return subscriptionRepository
+            .findFirstByMemberIdAndCancelledFalseOrderByEndDateDesc(member.getId())
+            .filter(s -> s.getEndDate() != null && !s.getEndDate().isBefore(Dates.today()))
+            .filter(s -> s.getPlan() != null && s.getPlan().isFreezeAllowed())
+            .filter(s -> s.getFrozenDays() < MAX_FREEZE_DAYS)
+            .orElse(null);
+    }
+
     private void applyDerivedFields(Member member) {
         User user = member.getUser();
         user.setAge(user.getBirthDate() == null ? null : Period.between(user.getBirthDate(), LocalDate.now()).getYears());

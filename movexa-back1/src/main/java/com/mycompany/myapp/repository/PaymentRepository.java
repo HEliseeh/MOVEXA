@@ -25,6 +25,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     Optional<Payment> findOneByLinkToken(String linkToken);
 
+    @EntityGraph(attributePaths = { "member", "member.user", "subscription" })
+    Optional<Payment> findWithDetailsByShareToken(String shareToken);
+
     Optional<Payment> findOneByTransactionId(String transactionId);
 
     @EntityGraph(attributePaths = { "subscription" })
@@ -47,6 +50,19 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     )
     List<Payment> findPaidForMembersSince(@Param("memberIds") Collection<Long> memberIds, @Param("since") Instant since);
 
+    /** Encaissements depuis une date : [date d'encaissement, montant] (regroupés par mois en Java). */
+    @Query(
+        "select p.paidAt, p.amount from Payment p where p.status = com.mycompany.myapp.domain.enumeration.PaymentStatus.PAID and p.paidAt >= :since"
+    )
+    List<Object[]> findPaidAmountsSince(@Param("since") Instant since);
+
     @Query(value = "select nextval('receipt_seq')", nativeQuery = true)
     long nextReceiptNumber();
+
+    /** Ventes payées par formule depuis une date (« 31 ventes ce mois-ci ») : [planId, nombre] */
+    @Query(
+        "select p.plan.id, count(p) from Payment p where p.plan is not null " +
+        "and p.status = com.mycompany.myapp.domain.enumeration.PaymentStatus.PAID and p.createdAt >= :since group by p.plan.id"
+    )
+    List<Object[]> countPaidByPlanSince(@Param("since") Instant since);
 }

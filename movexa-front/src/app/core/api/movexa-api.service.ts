@@ -4,6 +4,16 @@ import { Observable, shareReplay } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { silent } from '../loading/loading.interceptor';
 import {
+  Activity,
+  PublicCard,
+  PublicReceipt,
+  ManagementStats,
+  SalesStats,
+  StatsPeriod,
+  Course,
+  CoursePayload,
+  CourseSlot,
+  PlanningWeek,
   CashClosure,
   CashDay,
   CheckIn,
@@ -63,6 +73,41 @@ export class MovexaApi {
     return this.http.put<Plan>(`${this.api}/plans/${id}`, p);
   }
 
+  // ---- Cours collectifs et planning ----
+  courses(): Observable<Course[]> {
+    return this.http.get<Course[]>(`${this.api}/courses`);
+  }
+  createCourse(c: CoursePayload): Observable<Course> {
+    return this.http.post<Course>(`${this.api}/courses`, c);
+  }
+  updateCourse(id: number, c: CoursePayload): Observable<Course> {
+    return this.http.put<Course>(`${this.api}/courses/${id}`, c);
+  }
+  addSlot(courseId: number, s: CourseSlot): Observable<CourseSlot> {
+    return this.http.post<CourseSlot>(`${this.api}/courses/${courseId}/slots`, s);
+  }
+  updateSlot(id: number, s: CourseSlot): Observable<CourseSlot> {
+    return this.http.put<CourseSlot>(`${this.api}/course-slots/${id}`, s);
+  }
+  deleteSlot(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.api}/course-slots/${id}`);
+  }
+  /** Séances de la semaine contenant ce jour (aaaa-mm-jj) */
+  planning(week: string): Observable<PlanningWeek> {
+    return this.http.get<PlanningWeek>(`${this.api}/planning`, { params: { week } });
+  }
+
+  // ---- Activités de la salle ----
+  activities(): Observable<Activity[]> {
+    return this.http.get<Activity[]>(`${this.api}/activities`);
+  }
+  createActivity(name: string): Observable<Activity> {
+    return this.http.post<Activity>(`${this.api}/activities`, { name });
+  }
+  updateActivity(a: Pick<Activity, 'id' | 'name' | 'active'>): Observable<Activity> {
+    return this.http.put<Activity>(`${this.api}/activities/${a.id}`, a);
+  }
+
   // ---- Coachs ----
   coaches(): Observable<Coach[]> {
     return this.http.get<Coach[]>(`${this.api}/coaches`);
@@ -111,6 +156,18 @@ export class MovexaApi {
   }
   receipt(id: number): Observable<Receipt> {
     return this.http.get<Receipt>(`${this.api}/payments/${id}/receipt`);
+  }
+  /** Jeton du lien public du reçu (créé au premier partage) */
+  shareReceipt(id: number): Observable<{ token: string }> {
+    return this.http.post<{ token: string }>(`${this.api}/payments/${id}/share`, {}, { context: silent() });
+  }
+
+  // ---- Pages publiques (carte et reçu du membre, sans connexion) ----
+  publicCard(token: string): Observable<PublicCard> {
+    return this.http.get<PublicCard>(`${this.api}/public/cards/${encodeURIComponent(token)}`);
+  }
+  publicReceipt(token: string): Observable<PublicReceipt> {
+    return this.http.get<PublicReceipt>(`${this.api}/public/receipts/${encodeURIComponent(token)}`);
   }
   cashDay(date?: string): Observable<CashDay> {
     const params = date ? new HttpParams().set('date', date) : undefined;
@@ -200,6 +257,15 @@ export class MovexaApi {
   saveSettings(s: GymSettings): Observable<GymSettings> {
     this.settings$ = undefined;
     return this.http.put<GymSettings>(`${this.api}/settings`, s);
+  }
+
+  // ---- Statistiques ----
+  managementStats(period: StatsPeriod): Observable<ManagementStats> {
+    return this.http.get<ManagementStats>(`${this.api}/stats/management`, { params: { period } });
+  }
+
+  salesStats(period: StatsPeriod): Observable<SalesStats> {
+    return this.http.get<SalesStats>(`${this.api}/stats/sales`, { params: { period } });
   }
 
   // ---- Comptes du personnel (gateway, réservé au gérant) ----

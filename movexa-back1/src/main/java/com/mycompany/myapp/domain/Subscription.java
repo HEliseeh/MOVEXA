@@ -52,4 +52,8 @@ public class Subscription implements Serializable {
 
     @Column(name = "created_by", length = 100)
     private String createdBy;
+
+    /** Jours ajoutés à la fin par des gels (voyage, blessure). */
+    @Column(name = "frozen_days", nullable = false)
+    private int frozenDays = 0;
 }

@@ -21,6 +21,8 @@ public final class PaymentDtos {
         Long planId,
         String planName,
         Long amount,
+        /** Part des frais d'inscription comprise dans le montant (première formule), sinon null. */
+        Long registrationFee,
         PaymentMethod method,
         PaymentStatus status,
         String receiptNumber,

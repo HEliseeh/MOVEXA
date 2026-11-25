@@ -1,98 +1,88 @@
-<div class="page">
-
-  <!-- ===== EN-TÊTE ===== -->
-  <header class="page-header">
+<div class="page-sheet">
+  <header class="sheet-header pg-header">
     <div>
-      <h1 class="page-title">Cours &amp; planning</h1>
-      <p class="page-subtitle">{{ weekLabel }}</p>
+      <h1 class="page-title">Planning du club</h1>
+      <p class="help pg-week">{{ weekLabel() }}</p>
     </div>
-    <div class="header-actions">
-      <div class="week-nav">
-        <button class="btn-nav" type="button" aria-label="Semaine précédente">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
-        <button class="btn-nav" type="button" aria-label="Semaine suivante">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
+    <div class="pg-actions">
+      <div class="pg-nav" role="group" aria-label="Changer de semaine">
+        <button type="button" class="btn btn-outline btn-sm" aria-label="Semaine précédente" (click)="moveWeek(-1)">‹</button>
+        <button type="button" class="btn btn-outline btn-sm" (click)="moveWeek(0)">Cette semaine</button>
+        <button type="button" class="btn btn-outline btn-sm" aria-label="Semaine suivante" (click)="moveWeek(1)">›</button>
       </div>
-      <button class="btn-primary" type="button">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-        Ajouter un cours
-      </button>
+      @if (store.isManager()) {
+        <button type="button" class="btn btn-primary" (click)="addSlot()">Ajouter un créneau</button>
+      }
     </div>
   </header>
 
-  <!-- ===== CALENDRIER SEMAINE ===== -->
-  <section class="card calendar-card" aria-label="Planning de la semaine">
+  @if (error(); as e) {
+    <div class="alert alert--error pg-alert" role="alert">{{ e }} <button type="button" class="link-btn" (click)="load()">Réessayer</button></div>
+  }
 
-    <!-- En-têtes jours -->
-    <div class="calendar-grid">
-      @for (day of week; track day.iso) {
-        <button
-          class="day-header"
-          [class.day-today]="day.iso === todayIso"
-          [class.day-selected]="selectedDay() === day.iso"
-          type="button"
-          (click)="selectDay(day.iso)"
-          [attr.aria-pressed]="selectedDay() === day.iso"
-          [attr.aria-label]="day.label + ' ' + day.date"
-        >
-          <span class="day-label">{{ day.label }}</span>
-          <span class="day-number">{{ day.date }}</span>
-        </button>
+  <div class="pg-scroll">
+    <div class="pg-grid" aria-label="Séances de la semaine">
+      @for (d of days(); track d.iso) {
+        <section class="pg-day" [class.pg-day--today]="d.today" [attr.aria-label]="d.label">
+          <h2 class="pg-day-head">
+            {{ d.label }}
+            @if (d.today) { <span class="pg-today">aujourd’hui</span> }
+          </h2>
+          @for (s of d.sessions; track s.slotId) {
+            <button type="button" class="pg-session" [class.pg-session--on]="selected()?.slotId === s.slotId && selected()?.date === s.date"
+                    [class.pg-session--past]="isPast(s)" [style.background]="colors[s.color].bg"
+                    [attr.aria-pressed]="selected()?.slotId === s.slotId && selected()?.date === s.date" (click)="selected.set(s)">
+              <span class="pg-time">{{ s.startTime }} – {{ s.endTime }}</span>
+              <span class="pg-name">{{ s.courseName }}</span>
+              @if (s.coachName) { <span class="pg-meta">{{ s.coachName }}</span> }
+              @if (s.room) { <span class="pg-meta">{{ s.room }}</span> }
+              <span class="pg-fill">{{ fillText(s) }}</span>
+            </button>
+          } @empty {
+            @if (!loading()) {
+              @if (store.isManager()) {
+                <button type="button" class="pg-empty" (click)="addSlot(d.n)">+ Créneau</button>
+              } @else {
+                <span class="pg-empty pg-empty--text">—</span>
+              }
+            }
+          }
+        </section>
       }
     </div>
+  </div>
 
-    <!-- Corps : cours par colonne -->
-    <div class="calendar-body" role="region" aria-label="Cours par jour">
-      <div class="calendar-grid calendar-courses">
-        @for (day of week; track day.iso) {
-          <div class="day-col" [class.col-selected]="selectedDay() === day.iso">
-            @if (day.courses.length === 0) {
-              <div class="no-course">—</div>
-            }
-            @for (course of day.courses; track course.id) {
-              <article
-                class="course-card"
-                [ngClass]="statusClass(course.status)"
-                tabindex="0"
-              >
-                <span class="course-time">{{ course.time }}</span>
-                <span class="course-name">{{ course.name }}</span>
-                <span class="course-coach">Coach {{ course.coach }}</span>
-                <span class="course-enrolled">{{ enrollLabel(course) }}</span>
-                @if (course.status === 'complet') {
-                  <span class="course-badge-complet">Complet</span>
-                }
-              </article>
-            }
-          </div>
-        }
+  <!-- ===== Séance choisie ===== -->
+  @if (selected(); as s) {
+    <section class="pg-detail" aria-labelledby="pg-detail-title">
+      <span class="pg-swatch" [style.background]="colors[s.color].bg" aria-hidden="true"></span>
+      <div class="pg-detail-text">
+        <h2 id="pg-detail-title" class="card-title">{{ s.courseName }}</h2>
+        <p class="help">
+          {{ dateLabel(s) }}, {{ s.startTime }} – {{ s.endTime }}
+          {{ s.coachName ? ' · ' + s.coachName : '' }}{{ s.room ? ' · ' + s.room : '' }}
+          · {{ fillText(s) }}
+        </p>
       </div>
-    </div>
-  </section>
-
-  <!-- ===== SECTION COACHS ===== -->
-  <section class="card coachs-card" aria-label="Équipe de coachs">
-    <div class="card-header">
-      <h2 class="card-title">Coachs</h2>
-      <a href="#" class="link-action">Gérer l'équipe</a>
-    </div>
-    <ul class="coachs-list" role="list">
-      @for (coach of coaches; track coach.name) {
-        <li class="coach-item">
-          <div class="member-cell">
-            <span class="avatar" aria-hidden="true">{{ coach.initials }}</span>
-            <span class="coach-name">{{ coach.name }}</span>
-          </div>
-          <span class="coach-courses">
-            <a href="#" class="link-courses">{{ coach.coursesThisWeek }} cours cette semaine</a>
-          </span>
-        </li>
+      @if (store.isManager()) {
+        <button type="button" class="btn btn-outline btn-sm" (click)="editSelected()">Modifier le créneau</button>
       }
-    </ul>
-  </section>
+      <button type="button" class="link-btn" (click)="selected.set(null)">Fermer</button>
+    </section>
+  }
 
+  <p class="help pg-summary">
+    @if (summary().count) {
+      {{ summary().count }} séance{{ summary().count > 1 ? 's' : '' }} cette semaine · {{ summary().places }} places
+      @if (summary().measured) { · {{ summary().present }} présents sur les {{ summary().measured }} séances passées }
+    } @else if (!loading()) {
+      Aucun cours programmé cette semaine.
+      @if (store.isManager()) { Créez vos cours dans <a routerLink="/coaches">Cours et coachs</a>, puis ajoutez des créneaux. }
+    }
+  </p>
+  <p class="help pg-summary">Pas de réservation : les présents sont les membres qui ont pointé l’activité du cours (jusqu’à 30 minutes avant le début).</p>
 </div>
+
+@if (slotDialog(); as d) {
+  <app-slot-dialog [courses]="courses()" [slot]="d.slot" [defaultDay]="d.day" (saved)="onSlotSaved()" (closed)="slotDialog.set(null)" />
+}

@@ -2,7 +2,7 @@ import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
-import { Dashboard as DashboardData, DueMember } from '@core/api/api.models';
+import { Course, CourseSession, Dashboard as DashboardData, DueMember } from '@core/api/api.models';
 import { MovexaApi } from '@core/api/movexa-api.service';
 import { CurrentUserStore } from '@core/auth/current-user.store';
 import { Fab, FabAction } from '@shared/fab/fab';
@@ -26,6 +26,13 @@ interface CalendarDay {
 }
 
 const PASTELS = ['peach', 'lavender', 'lime'] as const;
+
+/** « 2,94 M », « 450 k » */
+function compact(n: number): string {
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(2).replace('.', ',') + ' M';
+  if (n >= 1_000) return Math.round(n / 1_000) + ' k';
+  return String(n);
+}
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
 /** Taille du mini-graphique d'entrées (viewBox) */
@@ -76,34 +83,40 @@ export class Dashboard implements OnInit {
     return `${e} ${e > 1 ? 'entrées' : 'entrée'} et ${p} ${p > 1 ? 'paiements' : 'paiement'} aujourd'hui.`;
   });
 
+  /** Objectifs du mois : renouvellements, encaissement et nouveaux membres (objectifs fixés dans Paramètres) */
   readonly goals = computed<Goal[]>(() => {
     const m = this.month();
     if (!m) return [];
-    const sent = m.remindersSentWeek;
-    const renewed = m.renewedAfterReminderWeek;
-    const renewPct = sent ? Math.round((renewed / sent) * 100) : null;
+    const pct = (a: number, b: number) => Math.min(100, Math.round((100 * a) / b));
+    const renewPct = m.renewalsDue ? pct(m.renewalsDone, m.renewalsDue) : null;
+    const revPct = m.revenueGoal ? pct(m.totalPaid, m.revenueGoal) : null;
+    const newPct = m.newMembersGoal ? pct(m.newMembers, m.newMembersGoal) : null;
     return [
       {
         n: '01',
-        label: 'Renouvelés après relance',
-        detail: sent ? `${renewed} sur ${sent} relances (7 jours) | ${renewPct} %` : 'Aucune relance ces 7 derniers jours',
+        label: 'Renouvellements du mois',
+        detail: m.renewalsDue ? `${m.renewalsDone} sur ${m.renewalsDue} échéances | ${renewPct} %` : 'Aucune échéance passée ce mois-ci',
         pct: renewPct,
         tone: 'lavender',
         icon: 'M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5',
       },
       {
         n: '02',
-        label: 'Encaissé ce mois-ci',
-        detail: `${fcfa(m.totalPaid)} · ${m.paymentsCount} ${m.paymentsCount > 1 ? 'paiements' : 'paiement'}`,
-        pct: null,
+        label: m.revenueGoal ? 'Objectif de revenus' : 'Encaissé ce mois-ci',
+        detail: m.revenueGoal
+          ? `${compact(m.totalPaid)} sur ${compact(m.revenueGoal)} FCFA | ${revPct} %`
+          : `${fcfa(m.totalPaid)} · objectif à fixer dans Paramètres`,
+        pct: revPct,
         tone: 'peach',
         icon: 'M2 7h20v12H2zM2 11h20M6 15h4',
       },
       {
         n: '03',
         label: 'Nouveaux membres',
-        detail: `${m.newMembers} ${m.newMembers > 1 ? 'inscrits' : 'inscrit'} ce mois-ci`,
-        pct: null,
+        detail: m.newMembersGoal
+          ? `${m.newMembers} sur ${m.newMembersGoal} visés | ${newPct} %`
+          : `${m.newMembers} ${m.newMembers > 1 ? 'inscrits' : 'inscrit'} ce mois-ci`,
+        pct: newPct,
         tone: 'lime',
         icon: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M19 8v6M22 11h-6',
       },
@@ -188,6 +201,17 @@ export class Dashboard implements OnInit {
     return days;
   });
 
+  /** Cours proposés : un point sous les jours de la semaine où il y a au moins une séance */
+  private readonly courses = signal<Course[]>([]);
+  private readonly courseDays = computed(() => new Set(this.courses().filter(c => c.active).flatMap(c => c.slots.map(s => s.dayOfWeek))));
+  /** Séances du jour choisi (planning du club) */
+  readonly daySessions = signal<CourseSession[] | null>(null);
+
+  hasCourses(day: CalendarDay): boolean {
+    const dow = ((new Date(day.iso + 'T12:00:00').getDay() + 6) % 7) + 1;
+    return !day.out && this.courseDays().has(dow);
+  }
+
   readonly selectedLabel = computed(() =>
     new Date(this.selectedDay() + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }),
   );
@@ -201,6 +225,11 @@ export class Dashboard implements OnInit {
 
   ngOnInit(): void {
     this.load();
+    this.api
+      .courses()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ next: c => this.courses.set(c), error: () => {} });
+    this.loadSessions(this.selectedDay());
     this.api
       .settings()
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -229,12 +258,34 @@ export class Dashboard implements OnInit {
   }
 
   pickDay(day: CalendarDay): void {
-    if (!day.out) this.selectedDay.set(day.iso);
+    if (day.out) return;
+    this.selectedDay.set(day.iso);
+    this.loadSessions(day.iso);
+  }
+
+  private loadSessions(iso: string): void {
+    this.daySessions.set(null);
+    this.api
+      .planning(iso)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: w => {
+          if (this.selectedDay() !== iso) return;
+          this.daySessions.set(w.sessions.filter(s => s.date === iso).sort((a, b) => a.startTime.localeCompare(b.startTime)));
+        },
+        error: () => this.daySessions.set([]),
+      });
+  }
+
+  sessionText(s: CourseSession): string {
+    const who = s.coachName ? ` avec ${s.coachName}` : '';
+    const fill = s.present !== null ? `${s.present} présents sur ${s.capacity}` : `${s.capacity} places`;
+    return `${s.courseName}${who} · ${fill}`;
   }
 
   dayAria(day: CalendarDay): string {
     const label = new Date(day.iso + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-    return `${day.out ? 'Hors mois, ' : ''}${label}${day.today ? ", aujourd'hui" : ''}`;
+    return `${day.out ? 'Hors mois, ' : ''}${label}${day.today ? ", aujourd'hui" : ''}${this.hasCourses(day) ? ', cours prévus' : ''}`;
   }
 
   toggleMenu(id: number): void {

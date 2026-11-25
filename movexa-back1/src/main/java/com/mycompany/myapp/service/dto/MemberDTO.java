@@ -6,7 +6,9 @@ import com.mycompany.myapp.domain.enumeration.PaymentMethod;
 import com.mycompany.myapp.domain.enumeration.SubscriptionState;
 import jakarta.validation.constraints.*;
 import java.io.Serializable;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -117,4 +119,26 @@ public class MemberDTO implements Serializable {
 
     /** Lecture seule : le paiement créé à l'inscription (pour le reçu ou le lien). */
     private PaymentDtos.PaymentDTO payment;
+
+    // ---- Droits d'accès ----
+
+    /** true : droits choisis activité par activité (activityIds) ; false : ceux de la formule. */
+    private Boolean customAccess;
+
+    /** Activités choisies pour ce membre (pris en compte si customAccess = true). */
+    @Size(max = 30)
+    private List<Long> activityIds;
+
+    /** Lecture seule (fiche, formulaire) : activités auxquelles le membre a droit aujourd'hui. */
+    private List<String> activityNames;
+
+    // ---- Lecture seule ----
+
+    /** Auteur et date de la dernière modification des notes. */
+    private String notesUpdatedBy;
+
+    private Instant notesUpdatedAt;
+
+    /** Une photo existe (GET /api/members/{id}/photo). */
+    private Boolean hasPhoto;
 }

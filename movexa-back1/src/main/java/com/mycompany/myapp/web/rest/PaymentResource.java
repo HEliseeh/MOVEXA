@@ -66,6 +66,13 @@ public class PaymentResource {
         return paymentService.confirmManually(id);
     }
 
+    /** POST /api/payments/{id}/share : jeton du lien public du reçu (à envoyer par WhatsApp). */
+    @PostMapping("/payments/{id}/share")
+    @PreAuthorize(AuthoritiesConstants.IS_DESK)
+    public java.util.Map<String, String> share(@PathVariable Long id) {
+        return java.util.Map.of("token", paymentService.shareToken(id));
+    }
+
     @GetMapping("/payments/{id}/receipt")
     public ReceiptDTO receipt(@PathVariable Long id) {
         return paymentService.receipt(id);

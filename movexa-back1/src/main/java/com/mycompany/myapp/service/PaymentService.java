@@ -81,7 +81,15 @@ public class PaymentService {
         p.setMember(member);
         p.setPlan(plan);
         p.setPlanName(plan.getName());
-        p.setAmount(amount != null ? amount : plan.getPrice());
+        // Frais d'inscription : ajoutés au prix pour la toute première formule du membre (il n'a encore jamais eu d'abonnement)
+        long fee = plan.getRegistrationFee() == null ? 0L : plan.getRegistrationFee();
+        boolean firstPlan = member.getExpiryDate() == null && fee > 0;
+        if (amount != null) {
+            p.setAmount(amount);
+        } else {
+            p.setAmount(plan.getPrice() + (firstPlan ? fee : 0L));
+            p.setRegistrationFee(firstPlan ? fee : null);
+        }
         p.setMethod(method);
         p.setStartDate(startDate);
         p.setReference(StringUtils.hasText(reference) ? reference.trim() : null);
@@ -171,6 +179,14 @@ public class PaymentService {
         markPaid(p);
     }
 
+    /** Lien public du reçu : le jeton est créé au premier partage puis réutilisé. */
+    public String shareToken(Long id) {
+        Payment p = repository.findById(id).orElseThrow(() -> new NotFoundException("Paiement introuvable"));
+        if (p.getStatus() != PaymentStatus.PAID) throw new BadRequestAlertException("Seul un paiement encaissé a un reçu à partager.", "payment", "notpaid");
+        if (p.getShareToken() == null) p.setShareToken(java.util.UUID.randomUUID().toString().replace("-", ""));
+        return p.getShareToken();
+    }
+
     @Transactional(readOnly = true)
     public ReceiptDTO receipt(Long id) {
         Payment p = repository.findWithDetailsById(id).orElseThrow(() -> new NotFoundException("Paiement introuvable"));
@@ -211,6 +227,7 @@ public class PaymentService {
             p.getPlan() != null ? p.getPlan().getId() : null,
             p.getPlanName(),
             p.getAmount(),
+            p.getRegistrationFee(),
             p.getMethod(),
             p.getStatus(),
             p.getReceiptNumber(),

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Lot 7 MVP : objectifs du mois (tableau de bord). Vide = pas d'objectif. -->
+    <changeSet id="20261125000005-1" author="elisee">
+        <addColumn tableName="gym_settings">
+            <column name="revenue_goal" type="bigint"/>
+            <column name="new_members_goal" type="integer"/>
+        </addColumn>
+    </changeSet>
+
+    <!-- Lot 7 MVP : lien public du reçu (créé quand on partage le reçu au membre). -->
+    <changeSet id="20261125000005-2" author="elisee">
+        <addColumn tableName="payment">
+            <column name="share_token" type="varchar(40)">
+                <constraints unique="true" uniqueConstraintName="ux_payment_share_token"/>
+            </column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

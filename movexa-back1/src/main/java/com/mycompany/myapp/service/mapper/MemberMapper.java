@@ -27,6 +27,8 @@ public interface MemberMapper {
     @Mapping(target = "planStartDate", ignore = true)
     @Mapping(target = "prospectId", ignore = true)
     @Mapping(target = "payment", ignore = true)
+    @Mapping(target = "activityIds", ignore = true)
+    @Mapping(target = "activityNames", ignore = true)
     MemberDTO toDto(Member member);
 
     /**
@@ -46,6 +48,11 @@ public interface MemberMapper {
     @Mapping(target = "subscriptionStartDate", ignore = true)
     @Mapping(target = "qrToken", ignore = true)
     @Mapping(target = "archived", ignore = true)
+    @Mapping(target = "customAccess", ignore = true)
+    @Mapping(target = "activities", ignore = true)
+    @Mapping(target = "notesUpdatedBy", ignore = true)
+    @Mapping(target = "notesUpdatedAt", ignore = true)
+    @Mapping(target = "hasPhoto", ignore = true)
     @Mapping(target = "status", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "autoRenew", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "coach", ignore = true)

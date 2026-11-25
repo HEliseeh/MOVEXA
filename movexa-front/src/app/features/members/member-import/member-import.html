@@ -30,6 +30,7 @@
           <span class="text-strong">Choisir un fichier CSV</span>
           <span class="help">Dans Excel : Fichier › Enregistrer sous › « CSV UTF-8 (délimité par des points-virgules) ».</span>
         </label>
+        <p>Pas de fichier propre ? <button type="button" class="link-btn" (click)="downloadTemplate()">Télécharger le modèle</button> et recopiez votre cahier dedans.</p>
       }
 
       @case (2) {
@@ -98,6 +99,9 @@
             <span><strong>{{ r.imported }} membres importés</strong>@if (r.updated) { , {{ r.updated }} mis à jour}. Les abonnements en cours ont été repris d’après la date de fin.</span>
           </div>
           <p class="help">Les membres importés n’ont pas encore reçu leur QR code : envoyez-le depuis leur fiche, ou à leur prochain passage.</p>
+          @if (rejected().length) {
+            <p>{{ rejected().length }} ligne(s) n’ont pas été importées. <button type="button" class="link-btn" (click)="downloadRejected()">Télécharger les lignes à corriger</button></p>
+          }
           <div class="mi-nav">
             <button type="button" class="btn btn-outline" (click)="restart()">Importer un autre fichier</button>
             <a routerLink="/members" class="btn btn-primary">Voir les membres</a>

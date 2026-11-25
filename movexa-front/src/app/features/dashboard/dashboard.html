@@ -150,7 +150,7 @@
               [attr.aria-label]="dayAria(d)"
               [disabled]="d.out"
               (click)="pickDay(d)"
-            >{{ d.n }}</button>
+            >{{ d.n }}@if (hasCourses(d)) { <span class="day-dot" aria-hidden="true"></span> }</button>
           }
         </div>
       </section>
@@ -159,17 +159,27 @@
       <section class="block block--cal">
         <div class="section-head">
           <h2 class="section-title">À venir</h2>
+          <a class="dash-link" routerLink="/planning">Tout voir</a>
         </div>
-        <div class="event">
-          <span class="event-icon" aria-hidden="true">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                 stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" /></svg>
-          </span>
-          <span class="event-text">
-            <span class="event-time">{{ selectedLabel() }}</span>
-            <span class="event-title">Le planning des cours n'est pas encore disponible.</span>
-          </span>
-        </div>
+        @for (s of daySessions() ?? []; track s.slotId) {
+          <a class="event" routerLink="/planning">
+            <span class="event-icon" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" /></svg>
+            </span>
+            <span class="event-text">
+              <span class="event-time">{{ s.startTime }} – {{ s.endTime }}</span>
+              <span class="event-title">{{ sessionText(s) }}</span>
+            </span>
+          </a>
+        } @empty {
+          <div class="event">
+            <span class="event-text">
+              <span class="event-time">{{ selectedLabel() }}</span>
+              <span class="event-title">{{ daySessions() === null ? 'Chargement…' : 'Aucun cours ce jour. Choisissez un jour avec un point.' }}</span>
+            </span>
+          </div>
+        }
       </section>
     </div>
   </div>

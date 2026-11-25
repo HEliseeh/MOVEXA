@@ -65,4 +65,16 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     long countByArchivedFalseAndExpiryDateBetween(LocalDate from, LocalDate to);
 
     long countByArchivedFalseAndJoinDateGreaterThanEqual(LocalDate date);
+
+    /** Dates d'inscription depuis une date (archivés compris). */
+    @Query("select m.joinDate from Member m where m.joinDate >= :since")
+    List<LocalDate> findJoinDatesSince(@Param("since") LocalDate since);
+
+    /** Membres partis : leur date de fin (la plus récente) est passée, entre deux dates. */
+    @Query("select m.expiryDate from Member m where m.expiryDate >= :since and m.expiryDate < :today")
+    List<LocalDate> findLapsedExpiryDates(@Param("since") LocalDate since, @Param("today") LocalDate today);
+
+    /** Membres actifs par formule : [nom de la formule, nombre]. */
+    @Query("select m.plan, count(m) from Member m where m.archived = false and m.expiryDate >= :today group by m.plan")
+    List<Object[]> countActiveByPlan(@Param("today") LocalDate today);
 }

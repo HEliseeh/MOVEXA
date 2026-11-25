@@ -82,6 +82,8 @@ public class SecurityConfiguration {
                     .pathMatchers("/services/*/v3/api-docs").hasAuthority(AuthoritiesConstants.ADMIN)
                     // Webhook de l'agrégateur de paiement : pas de JWT, le service vérifie une signature HMAC
                     .pathMatchers(HttpMethod.POST, "/services/movexa-back1/api/public/payments/webhook").permitAll()
+                    // Carte et reçu ouverts par le membre depuis WhatsApp (jeton aléatoire, lecture seule)
+                    .pathMatchers(HttpMethod.GET, "/services/movexa-back1/api/public/cards/*", "/services/movexa-back1/api/public/receipts/*").permitAll()
                     .pathMatchers("/services/**").authenticated()
                     .pathMatchers("/v3/api-docs/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     .pathMatchers("/management/health").permitAll()

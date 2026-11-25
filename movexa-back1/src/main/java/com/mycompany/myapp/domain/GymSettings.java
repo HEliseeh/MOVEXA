@@ -59,6 +59,23 @@ public class GymSettings implements Serializable {
     @Column(name = "expiring_soon_days", nullable = false)
     private Integer expiringSoonDays = 7;
 
+    /** Nombre de personnes que la salle peut accueillir en même temps (facultatif) */
+    @Min(1)
+    @Max(5000)
+    @Column(name = "capacity")
+    private Integer capacity;
+
+    /** Objectif d'encaissement du mois en FCFA (tableau de bord, facultatif) */
+    @Min(0)
+    @Column(name = "revenue_goal")
+    private Long revenueGoal;
+
+    /** Objectif de nouveaux membres par mois (facultatif) */
+    @Min(0)
+    @Max(10000)
+    @Column(name = "new_members_goal")
+    private Integer newMembersGoal;
+
     // ---- Paiements ----
     @Column(name = "cash_enabled", nullable = false)
     private boolean cashEnabled = true;

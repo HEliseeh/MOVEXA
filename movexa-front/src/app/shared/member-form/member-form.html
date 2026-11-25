@@ -39,11 +39,14 @@
           </div>
         </div>
         <div class="mf-done-actions">
-          <a class="btn btn-primary" [href]="welcomeLink(m)" target="_blank" rel="noopener">Envoyer par WhatsApp</a>
+          <a class="btn btn-primary" [href]="welcomeLink(m)" target="_blank" rel="noopener">Envoyer reçu et QR par WhatsApp</a>
           @if (m.payment?.status === 'PAID' && store.isDesk()) {
             <a class="btn btn-outline" [routerLink]="['/receipts', m.payment!.id]">Voir le reçu</a>
           }
           <a class="btn btn-outline" [routerLink]="['/members', m.id]">Fiche et QR code</a>
+          @if (store.isDesk() && m.payment?.status === 'PAID') {
+            <button type="button" class="btn btn-outline" (click)="checkInNow()">Pointer son entrée</button>
+          }
         </div>
       </div>
       <footer class="modal-foot">
@@ -61,7 +64,7 @@
         }
 
         <section class="mf-section">
-          <h3 class="mf-section-title">Identité</h3>
+          <h3 class="mf-section-title">{{ step().identity }}</h3>
           <div class="mf-grid">
             <div class="field">
               <label for="mf-phone">Téléphone <span class="req" aria-hidden="true">*</span></label>
@@ -94,20 +97,40 @@
               @if (error('lastName'); as e) { <span class="error-text">{{ e }}</span> }
             </div>
           </div>
+          <!-- Photo facultative : aide l'accueil à reconnaître le membre -->
+          <div class="mf-photo">
+            @if (photoPreview(); as src) {
+              <img class="mf-photo-img" [src]="src" alt="Photo choisie" />
+            } @else if (member() && member()!.hasPhoto && !removePhoto()) {
+              <app-member-photo [memberId]="member()!.id" [hasPhoto]="true" [firstName]="member()!.firstName" [lastName]="member()!.lastName" [size]="64" />
+            } @else {
+              <span class="avatar avatar--lg" aria-hidden="true">{{ initials() || '?' }}</span>
+            }
+            <div class="mf-photo-text">
+              <label class="btn btn-outline btn-sm mf-photo-btn">
+                <input type="file" accept="image/*" capture="user" class="sr-only" (change)="pickPhoto($event)" />
+                {{ photoPreview() || member()?.hasPhoto ? 'Changer la photo' : 'Prendre ou ajouter une photo' }}
+              </label>
+              @if (photoPreview() || (member()?.hasPhoto && !removePhoto())) {
+                <button type="button" class="link-btn" (click)="dropPhoto()">Retirer la photo</button>
+              }
+              <span class="help">{{ photoError() ?? 'Facultatif, aide l’accueil à reconnaître le membre.' }}</span>
+            </div>
+          </div>
         </section>
 
         @if (!isEdit() && !store.isDesk()) {
           <p class="help">L’abonnement et le paiement se font à l’accueil : le membre est inscrit sans formule.</p>
         }
-        <!-- Abonnement et paiement : seulement à l'accueil (le serveur refuse un encaissement par le commercial) -->
+        <!-- Formule : seulement à l'accueil (le serveur refuse un encaissement par le commercial) -->
         @if (!isEdit() && store.isDesk()) {
           <section class="mf-section">
-            <h3 class="mf-section-title">Abonnement et paiement</h3>
+            <h3 class="mf-section-title">{{ step().plan }}</h3>
             <div class="mf-grid">
               <div class="field">
                 <label for="mf-plan">Formule</label>
                 <select id="mf-plan" class="input-line" formControlName="planId">
-                  <option [ngValue]="0">Aucune pour l’instant</option>
+                  <option [ngValue]="0">Choisir plus tard</option>
                   @for (p of plans(); track p.id) {
                     <option [ngValue]="p.id">{{ p.name }}, {{ fcfa(p.price) }}</option>
                   }
@@ -115,22 +138,57 @@
               </div>
               @if (plan()) {
                 <div class="field">
-                  <label for="mf-start">Date de début</label>
+                  <label for="mf-start">Début</label>
                   <input id="mf-start" class="input-line" type="date" formControlName="startDate" />
                 </div>
               }
             </div>
             <span class="help">{{ endText() }}</span>
-            @if (plan()) {
-              <fieldset class="mf-fieldset">
-                <legend class="field-label">Moyen de paiement</legend>
-                <div class="choices">
-                  @for (m of methods(); track m.id) {
-                    <button type="button" class="choice" [attr.aria-pressed]="method() === m.id" [disabled]="!m.enabled" (click)="method.set(m.id)">{{ m.label }}</button>
-                  }
-                </div>
-              </fieldset>
+          </section>
+        }
+
+        <!-- Droits d'accès : ceux de la formule, ou choisis un par un -->
+        <section class="mf-section">
+          <h3 class="mf-section-title">{{ step().access }}</h3>
+          <div class="choices" role="group" aria-label="Droits d’accès">
+            <button type="button" class="choice" [attr.aria-pressed]="accessMode() === 'plan'" (click)="setAccessMode('plan')">Droits de la formule</button>
+            <button type="button" class="choice" [attr.aria-pressed]="accessMode() === 'custom'" (click)="setAccessMode('custom')">Choisir les activités une par une</button>
+          </div>
+          @if (accessMode() === 'plan') {
+            @if (planRights(); as rights) {
+              <span class="help">{{ rights.length ? 'Inclus : ' + rights.join(', ') + '.' : 'Cette formule n’inclut aucune activité.' }}</span>
+            } @else {
+              <span class="help">Choisissez une formule pour voir les activités incluses.</span>
             }
+          } @else {
+            <div class="mf-acts">
+              @for (a of activityChoices(); track a.id) {
+                <label class="checkbox-label">
+                  <input type="checkbox" [checked]="customIds().includes(a.id)" (change)="toggleActivity(a.id, $any($event.target).checked)" />
+                  {{ a.name }}{{ a.active ? '' : ' (retirée)' }}
+                </label>
+              }
+            </div>
+            <span class="help" [class.error-text]="!customIds().length">
+              {{ customIds().length ? 'Vérifié à chaque pointage : une activité non cochée affiche « Refusé, activité non incluse ».' : 'Cochez au moins une activité, sinon son QR code sera refusé partout.' }}
+            </span>
+          }
+        </section>
+
+        @if (!isEdit() && store.isDesk() && plan()) {
+          <section class="mf-section">
+            <h3 class="mf-section-title">{{ step().pay }}</h3>
+            @if (plan()!.registrationFee) {
+              <span class="help">{{ fcfa(plan()!.price) }} + {{ fcfa(plan()!.registrationFee) }} de frais d’inscription (première formule).</span>
+            }
+            <fieldset class="mf-fieldset">
+              <legend class="sr-only">Moyen de paiement</legend>
+              <div class="choices">
+                @for (m of methods(); track m.id) {
+                  <button type="button" class="choice" [attr.aria-pressed]="method() === m.id" [disabled]="!m.enabled" (click)="method.set(m.id)">{{ m.label }}</button>
+                }
+              </div>
+            </fieldset>
           </section>
         }
 

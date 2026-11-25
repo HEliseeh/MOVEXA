@@ -36,7 +36,13 @@ public final class DashboardDtos {
         long expiringCount,
         List<DueMember> expiring,
         long expiredCount,
-        List<DueMember> expired
+        List<DueMember> expired,
+        /** Abonnements arrivés à échéance depuis le début de la période, et ceux déjà renouvelés */
+        long renewalsDue,
+        long renewalsDone,
+        /** Objectifs du mois (Paramètres), null si non fixés */
+        Long revenueGoal,
+        Integer newMembersGoal
     ) {}
 
     /** Écran d'accueil du réceptionniste. */

@@ -31,6 +31,16 @@ export const routes: Routes = [
       import('@features/auth/reset-password/reset-password').then(m => m.ResetPassword),
   },
 
+  // ---- Pages envoyées au membre par WhatsApp (sans compte, sans menu) ----
+  {
+    path: 'carte/:token',
+    loadComponent: () => import('@features/public/member-card/member-card').then(m => m.MemberCard),
+  },
+  {
+    path: 'recu/:token',
+    loadComponent: () => import('@features/public/public-receipt/public-receipt').then(m => m.PublicReceiptPage),
+  },
+
   // ---- Zone authentifiée (layout avec menu) ----
   {
     path: '',
@@ -86,10 +96,16 @@ export const routes: Routes = [
         loadComponent: () => import('@features/subscriptions/subscriptions').then(m => m.Subscriptions),
       },
       {
+        path: 'planning',
+        canActivate: [roleGuard],
+        data: DESK,
+        loadComponent: () => import('@features/planning/planning').then(m => m.Planning),
+      },
+      {
         path: 'plans',
         canActivate: [roleGuard],
-        data: { ...MANAGER_ONLY, tab: 'plans' },
-        loadComponent: () => import('@features/subscriptions/subscriptions').then(m => m.Subscriptions),
+        data: MANAGER_ONLY,
+        loadComponent: () => import('@features/plans/plans').then(m => m.Plans),
       },
       {
         path: 'team',
@@ -112,6 +128,13 @@ export const routes: Routes = [
         canActivate: [roleGuard],
         data: DESK,
         loadComponent: () => import('@features/payments/receipt/receipt').then(m => m.ReceiptPage),
+      },
+      {
+        // Gérant : gestion + commercial ; commercial : partie commerciale seulement
+        path: 'stats',
+        canActivate: [roleGuard],
+        data: { roles: ['ROLE_ADMIN', 'ROLE_COMMERCIAL'], fallback: '/reception' },
+        loadComponent: () => import('@features/stats/stats').then(m => m.Stats),
       },
       {
         path: 'settings',

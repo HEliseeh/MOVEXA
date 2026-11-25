@@ -34,6 +34,8 @@ public class SecurityConfiguration {
                     .requestMatchers(HttpMethod.GET, "/api/authenticate").permitAll()
                     // Webhook de l'agrégateur de paiement : pas de JWT, la signature HMAC est vérifiée dans le contrôleur
                     .requestMatchers(HttpMethod.POST, "/api/public/payments/webhook").permitAll()
+                    // Carte et reçu envoyés au membre par lien (jeton aléatoire, lecture seule)
+                    .requestMatchers(HttpMethod.GET, "/api/public/cards/*", "/api/public/receipts/*").permitAll()
                     .requestMatchers("/api/admin/**").hasAuthority(AuthoritiesConstants.ADMIN)
                     // API métier : gérant ou réceptionniste uniquement (un simple ROLE_USER n'a accès à rien).
                     // Les actions réservées au gérant sont marquées @PreAuthorize(IS_MANAGER) dans les contrôleurs.

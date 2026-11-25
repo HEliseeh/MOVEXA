@@ -4,12 +4,13 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
-import { CheckIn, CheckInMethod, CheckInResult, MemberLite, Payment, SubscriptionState } from '@core/api/api.models';
+import { Activity, CheckIn, CheckInMethod, CheckInResult, MemberLite, Payment, SubscriptionState } from '@core/api/api.models';
 import { MovexaApi } from '@core/api/movexa-api.service';
 import { OfflineService } from '@core/offline/offline.service';
 import { ToastService } from '@core/notifications/toast.service';
 import { apiError, clientId, fcfa, frDate, hour, longToday, STATE_TONES, todayIso } from '@shared/format';
 import { PayDialog } from '@shared/pay-dialog/pay-dialog';
+import { MemberPhoto } from '@shared/member-photo/member-photo';
 
 /** Une ligne du journal du jour (venue du serveur ou en attente de synchronisation) */
 interface JournalRow {
@@ -21,6 +22,8 @@ interface JournalRow {
   name: string;
   method: CheckInMethod;
   result: CheckInResult;
+  /** Activité pointée (null si non précisée) */
+  activity: string | null;
   pending: boolean;
 }
 
@@ -28,6 +31,8 @@ interface JournalRow {
 interface Answer {
   result: CheckInResult;
   member: MemberLite;
+  /** Activités incluses dans la formule (« Droits de la formule ») */
+  rights?: string[];
   text: string;
   pending: boolean;
 }
@@ -38,7 +43,16 @@ const RESULT_LABELS: Record<CheckInResult, string> = {
   ALLOWED: 'Autorisé',
   ALLOWED_EXPIRING: 'Autorisé, expire bientôt',
   REFUSED: 'Refusé',
+  REFUSED_ACTIVITY: 'Refusé, activité non incluse',
 };
+
+/** Le membre n'est pas entré (abonnement expiré, absent, ou activité non incluse) */
+function isRefused(r: CheckInResult): boolean {
+  return r === 'REFUSED' || r === 'REFUSED_ACTIVITY';
+}
+
+/** Activité choisie au poste d'accueil, gardée d'une visite à l'autre sur cet appareil */
+const ACTIVITY_KEY = 'movexa.access.activity';
 
 /** Icônes du bloc de réponse (trait, grille de 24) */
 const ICONS = {
@@ -61,7 +75,7 @@ const LAST_HOUR = 21;
  */
 @Component({
   selector: 'app-access',
-  imports: [FormsModule, RouterLink, PayDialog],
+  imports: [FormsModule, RouterLink, PayDialog, MemberPhoto],
   templateUrl: './access.html',
   styleUrl: './access.css',
 })
@@ -89,6 +103,12 @@ export class Access implements OnInit, OnDestroy {
   readonly waitingLink = signal<Payment | null>(null);
   readonly paymentsToday = signal<number | null>(null);
   readonly filter = signal<JournalFilter>('all');
+  readonly isRefused = isRefused;
+
+  // ---- Activité vérifiée au pointage ----
+  readonly activities = signal<Activity[]>([]);
+  /** null = pointer sans vérifier l'activité */
+  readonly activityId = signal<number | null>(null);
 
   // ---- Caméra ----
   readonly cameraOn = signal(false);
@@ -100,6 +120,14 @@ export class Access implements OnInit, OnDestroy {
   private lastTokenAt = 0;
   private threshold = 7;
 
+  /** Capacité de la salle (Paramètres › Ma salle), pour « Dans la salle maintenant » */
+  readonly capacity = signal<number | null>(null);
+  /** Heure courante, rafraîchie chaque minute (estimation « dans la salle ») */
+  private readonly now = signal(Date.now());
+  private clock: ReturnType<typeof setInterval> | null = null;
+  /** Suivi d'un lien de paiement en attente : vérifié toutes les 5 secondes */
+  private linkPoll: ReturnType<typeof setInterval> | null = null;
+
   readonly rows = computed<JournalRow[]>(() => {
     const pending = this.offline.pending().map(p => ({
       key: p.clientId,
@@ -109,6 +137,7 @@ export class Access implements OnInit, OnDestroy {
       name: p.memberName,
       method: p.method,
       result: 'ALLOWED' as CheckInResult,
+      activity: null,
       pending: true,
     }));
     return [...pending.reverse(), ...this.journal()];
@@ -123,17 +152,33 @@ export class Access implements OnInit, OnDestroy {
   readonly filteredRows = computed(() => {
     const f = this.filter();
     if (f === 'all') return this.rows();
-    return this.rows().filter(r => (f === 'refused') === (r.result === 'REFUSED'));
+    return this.rows().filter(r => (f === 'refused') === isRefused(r.result));
   });
 
-  readonly entries = computed(() => this.rows().filter(r => r.result !== 'REFUSED').length);
-  readonly refused = computed(() => this.rows().filter(r => r.result === 'REFUSED').length);
+  readonly entries = computed(() => this.rows().filter(r => !isRefused(r.result)).length);
+  readonly refused = computed(() => this.rows().filter(r => isRefused(r.result)).length);
   readonly expiring = computed(() => this.rows().filter(r => r.result === 'ALLOWED_EXPIRING').length);
+
+  /**
+   * Personnes probablement dans la salle : entrées des 90 dernières minutes (durée habituelle d'une séance).
+   * Estimation, faute de pointage à la sortie.
+   */
+  readonly inside = computed(() => {
+    const since = this.now() - 90 * 60_000;
+    return this.rows().filter(r => !isRefused(r.result) && Date.parse(r.at) >= since).length;
+  });
 
   readonly kpis = computed(() => [
     { label: 'Entrées aujourd’hui', value: String(this.entries()), hint: 'membres autorisés depuis minuit' },
+    {
+      label: 'Dans la salle maintenant',
+      value: this.capacity() ? `${this.inside()} / ${this.capacity()}` : String(this.inside()),
+      hint: this.capacity()
+        ? `occupation ${Math.round((100 * this.inside()) / this.capacity()!)} % · entrés depuis 1 h 30`
+        : 'entrés depuis 1 h 30 (estimation)',
+    },
     { label: 'Expirent bientôt', value: String(this.expiring()), hint: 'entrés, à qui proposer le renouvellement' },
-    { label: 'Entrées refusées', value: String(this.refused()), hint: 'abonnement expiré ou absent' },
+    { label: 'Entrées refusées', value: String(this.refused()), hint: 'expiré, sans abonnement ou activité non incluse' },
     {
       label: 'Paiements aujourd’hui',
       value: this.paymentsToday() === null ? '–' : String(this.paymentsToday()),
@@ -145,7 +190,7 @@ export class Access implements OnInit, OnDestroy {
   readonly hours = computed(() => {
     const counts = new Map<number, number>();
     for (const r of this.rows()) {
-      if (r.result === 'REFUSED') continue;
+      if (isRefused(r.result)) continue;
       const h = new Date(r.at).getHours();
       counts.set(h, (counts.get(h) ?? 0) + 1);
     }
@@ -181,6 +226,7 @@ export class Access implements OnInit, OnDestroy {
     if (!a) return { tone: 'idle', icon: ICONS.idle, title: this.busy() ? 'Vérification…' : 'En attente d’un membre' };
     if (a.result === 'ALLOWED') return { tone: 'ok', icon: ICONS.ok, title: 'Accès autorisé' };
     if (a.result === 'ALLOWED_EXPIRING') return { tone: 'soon', icon: ICONS.soon, title: 'Accès autorisé, expire bientôt' };
+    if (a.result === 'REFUSED_ACTIVITY') return { tone: 'ko', icon: ICONS.ko, title: 'Refusé, activité non incluse' };
     return { tone: 'ko', icon: ICONS.ko, title: 'Accès refusé' };
   });
 
@@ -210,7 +256,12 @@ export class Access implements OnInit, OnDestroy {
       this.offline.refreshCache();
       void this.offline.sync();
     }
-    this.api.settings().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(s => (this.threshold = s.expiringSoonDays));
+    this.api.settings().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(s => {
+      this.threshold = s.expiringSoonDays;
+      this.capacity.set(s.capacity ?? null);
+    });
+    this.clock = setInterval(() => this.now.set(Date.now()), 60_000);
+    this.loadActivities();
     this.loadJournal();
     this.loadPayments();
     // Arrivée depuis une fiche ou une liste (« Pointer ») : /access?member=12
@@ -221,8 +272,39 @@ export class Access implements OnInit, OnDestroy {
     }
   }
 
+  /** Activités proposées au poste ; on reprend celle choisie la dernière fois sur cet appareil */
+  private loadActivities(): void {
+    this.api.activities().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: list => {
+        const active = list.filter(a => a.active);
+        this.activities.set(active);
+        let saved: number | null = null;
+        try {
+          const raw = localStorage.getItem(ACTIVITY_KEY);
+          saved = raw ? Number(raw) : null;
+        } catch {
+          /* stockage indisponible : on prend la première activité */
+        }
+        const keep = saved !== null && active.some(a => a.id === saved);
+        this.activityId.set(keep ? saved : (active[0]?.id ?? null));
+      },
+      error: () => this.activities.set([]),
+    });
+  }
+
+  pickActivity(id: number | null): void {
+    this.activityId.set(id);
+    try {
+      localStorage.setItem(ACTIVITY_KEY, id === null ? '' : String(id));
+    } catch {
+      /* préférence locale seulement */
+    }
+  }
+
   ngOnDestroy(): void {
     this.stopCamera();
+    this.stopLinkPoll();
+    if (this.clock) clearInterval(this.clock);
   }
 
   loadJournal(): void {
@@ -276,12 +358,18 @@ export class Access implements OnInit, OnDestroy {
     }
     this.busy.set(true);
     this.api
-      .checkIn({ ...target, method, clientId: clientId() })
+      .checkIn({ ...target, method, clientId: clientId(), activityId: this.activityId() })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: c => {
           this.busy.set(false);
-          this.answer.set({ result: c.result, member: this.liteFrom(c), text: this.answerText(c.result, c.memberName, c.endDate), pending: false });
+          this.answer.set({
+            result: c.result,
+            member: this.liteFrom(c),
+            rights: c.includedActivities,
+            text: this.answerText(c.result, c.memberName, c.endDate, c.activityName),
+            pending: false,
+          });
           this.journal.update(list => [this.toRow(c), ...list]);
         },
         error: (err: HttpErrorResponse) => {
@@ -298,6 +386,42 @@ export class Access implements OnInit, OnDestroy {
   }
 
   /** Encaisser depuis l'écran orange ou rouge */
+  /**
+   * Lien de paiement envoyé : on interroge le serveur toutes les 5 secondes.
+   * Dès que l'agrégateur confirme, l'écran passe au vert et l'entrée est pointée. Abandon après 15 minutes.
+   */
+  private startLinkPoll(p: Payment): void {
+    this.stopLinkPoll();
+    const started = Date.now();
+    this.linkPoll = setInterval(() => {
+      if (Date.now() - started > 15 * 60_000 || this.waitingLink()?.id !== p.id) {
+        this.stopLinkPoll();
+        return;
+      }
+      this.api.paymentLinks().subscribe({
+        next: links => {
+          const now = links.find(l => l.id === p.id);
+          if (!now || now.status === 'PENDING') return;
+          this.stopLinkPoll();
+          this.waitingLink.set(null);
+          if (now.status === 'PAID') {
+            this.toast.success(`Paiement confirmé par l’agrégateur, reçu ${now.receiptNumber}.`);
+            this.paymentsToday.update(n => (n ?? 0) + 1);
+            this.checkIn({ memberId: now.memberId }, 'SEARCH');
+          } else {
+            this.error.set('Le lien de paiement a été annulé.');
+          }
+        },
+        error: () => {},
+      });
+    }, 5000);
+  }
+
+  private stopLinkPoll(): void {
+    if (this.linkPoll) clearInterval(this.linkPoll);
+    this.linkPoll = null;
+  }
+
   openPay(): void {
     const a = this.answer();
     if (a) this.paying.set(a.member);
@@ -308,6 +432,7 @@ export class Access implements OnInit, OnDestroy {
     this.paying.set(null);
     if (p.status === 'PENDING') {
       this.waitingLink.set(p);
+      this.startLinkPoll(p);
       return;
     }
     this.toast.success(`Paiement enregistré, reçu ${p.receiptNumber}.`);
@@ -403,8 +528,10 @@ export class Access implements OnInit, OnDestroy {
       .slice(0, 6);
   }
 
-  private answerText(result: CheckInResult, name: string, endDate: string | null): string {
+  private answerText(result: CheckInResult, name: string, endDate: string | null, activity: string | null = null): string {
     switch (result) {
+      case 'REFUSED_ACTIVITY':
+        return `${name} : « ${activity ?? 'cette activité'} » n’est pas inclus dans sa formule. Aucune entrée enregistrée.`;
       case 'ALLOWED':
         return `${name}, valide jusqu’au ${frDate(endDate)}. Entrée enregistrée à ${hour(new Date().toISOString())}.`;
       case 'ALLOWED_EXPIRING':
@@ -427,6 +554,7 @@ export class Access implements OnInit, OnDestroy {
       state: c.state,
       daysLeft: c.daysLeft,
       qrToken: '',
+      hasPhoto: c.memberHasPhoto,
     };
   }
 
@@ -439,6 +567,7 @@ export class Access implements OnInit, OnDestroy {
       name: c.memberName,
       method: c.method,
       result: c.result,
+      activity: c.activityName,
       pending: false,
     };
   }

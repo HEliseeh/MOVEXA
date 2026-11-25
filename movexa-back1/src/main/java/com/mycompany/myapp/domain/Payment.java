@@ -44,6 +44,10 @@ public class Payment implements Serializable {
     @Column(name = "amount", nullable = false)
     private Long amount;
 
+    /** Part des frais d'inscription comprise dans le montant (première formule du membre), sinon null. */
+    @Column(name = "registration_fee")
+    private Long registrationFee;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "method", length = 20, nullable = false)
     private PaymentMethod method;
@@ -61,6 +65,10 @@ public class Payment implements Serializable {
 
     @Column(name = "link_token", length = 40, unique = true)
     private String linkToken;
+
+    /** Jeton du lien public du reçu, créé au premier partage */
+    @Column(name = "share_token", length = 40, unique = true)
+    private String shareToken;
 
     @Column(name = "transaction_id", length = 100, unique = true)
     private String transactionId;

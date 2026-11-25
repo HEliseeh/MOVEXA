@@ -40,6 +40,15 @@ export interface MemberDto {
   qrToken: string;
   /** Paiement créé à l'inscription (reçu ou lien) */
   payment: Payment | null;
+  /** true : droits choisis activité par activité ; false : ceux de la formule */
+  customAccess: boolean;
+  /** Activités choisies pour ce membre (si customAccess) */
+  activityIds: number[] | null;
+  /** Activités auxquelles il a droit aujourd'hui (fiche, formulaire) */
+  activityNames: string[] | null;
+  notesUpdatedBy: string | null;
+  notesUpdatedAt: string | null;
+  hasPhoto: boolean;
 }
 
 /** Ce que le front envoie en création / modification. */
@@ -58,6 +67,9 @@ export interface MemberPayload {
   planStartDate?: string | null;
   /** Création à partir d'un prospect */
   prospectId?: number | null;
+  /** Droits d'accès : false = ceux de la formule ; true = la liste activityIds */
+  customAccess?: boolean;
+  activityIds?: number[];
 }
 
 export interface MemberPage {
@@ -73,6 +85,22 @@ export interface MemberOverview {
   payments: Payment[];
   visitDays: string[];
   reminders: Reminder[];
+  /** Heures (0–23) des entrées des 30 derniers jours */
+  visitHours: number[];
+  /** La formule en cours permet le gel et l'abonnement est encore valable */
+  canFreeze: boolean;
+  freezeDaysLeft: number;
+  freezes: Freeze[];
+}
+
+/** Gel d'un abonnement (historique de la fiche) */
+export interface Freeze {
+  id: number;
+  planName: string;
+  days: number;
+  reason: string | null;
+  createdBy: string | null;
+  createdAt: string;
 }
 
 export type { CheckIn };
@@ -107,6 +135,24 @@ export class MembersService {
 
   update(id: number, payload: MemberPayload): Observable<MemberDto> {
     return this.http.put<MemberDto>(`${this.url}/${id}`, { ...payload, id });
+  }
+
+  /** Gel de l'abonnement en cours : la fin est repoussée de « days » jours */
+  freeze(id: number, days: number, reason: string | null): Observable<MemberDto> {
+    return this.http.post<MemberDto>(`${this.url}/${id}/freeze`, { days, reason });
+  }
+
+  /** Photo du membre (image) ; elle passe par l'API car elle demande le jeton de connexion */
+  photo(id: number): Observable<Blob> {
+    return this.http.get(`${this.url}/${id}/photo`, { responseType: 'blob' });
+  }
+
+  savePhoto(id: number, image: Blob): Observable<void> {
+    return this.http.put<void>(`${this.url}/${id}/photo`, image, { headers: { 'Content-Type': image.type || 'image/jpeg' } });
+  }
+
+  deletePhoto(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.url}/${id}/photo`);
   }
 
   /** Archive le membre (l'historique est conservé côté serveur) */

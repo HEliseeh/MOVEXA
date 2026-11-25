@@ -7,7 +7,8 @@ export type PaymentMethod = 'CASH' | 'MTN_MOMO' | 'MOOV_MONEY' | 'PAYMENT_LINK';
 export type PaymentStatus = 'PENDING' | 'PAID' | 'CANCELLED';
 export type SubscriptionState = 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED' | 'NONE';
 export type CheckInMethod = 'QR' | 'SEARCH';
-export type CheckInResult = 'ALLOWED' | 'ALLOWED_EXPIRING' | 'REFUSED';
+/** REFUSED : abonnement expiré ou inexistant ; REFUSED_ACTIVITY : activité non incluse dans la formule */
+export type CheckInResult = 'ALLOWED' | 'ALLOWED_EXPIRING' | 'REFUSED' | 'REFUSED_ACTIVITY';
 export type ReminderChannel = 'SMS' | 'WHATSAPP';
 export type ReminderRule = 'BEFORE_7' | 'BEFORE_1' | 'AFTER_1' | 'AFTER_7';
 export type ProspectSource = 'WALK_IN' | 'REFERRAL' | 'WORD_OF_MOUTH' | 'SOCIAL' | 'FLYER' | 'OTHER';
@@ -17,12 +18,30 @@ export interface Plan {
   id: number;
   name: string;
   price: number;
+  /** 0 = valable le jour même (séance unique) */
   durationDays: number;
   active: boolean;
+  /** Membres dont c'est la formule en cours */
   memberCount: number | null;
+  /** Ajoutés au prix pour la première formule du membre (0 = aucun) */
+  registrationFee: number;
+  freezeAllowed: boolean;
+  activityIds: number[];
+  activityNames: string[];
+  /** Ventes payées depuis le 1er du mois */
+  salesThisMonth: number | null;
 }
 
-export type PlanPayload = Omit<Plan, 'id' | 'memberCount'> & { id?: number };
+export type PlanPayload = Omit<Plan, 'id' | 'memberCount' | 'activityNames' | 'salesThisMonth'> & { id?: number };
+
+/** Activité de la salle (musculation, cours collectifs, sauna…) */
+export interface Activity {
+  id: number;
+  name: string;
+  active: boolean;
+  /** Nombre de formules qui l'incluent */
+  planCount: number | null;
+}
 
 /** Coach de la salle et ses disciplines */
 export interface Coach {
@@ -53,6 +72,8 @@ export interface MemberLite {
   state: SubscriptionState;
   daysLeft: number | null;
   qrToken: string;
+  /** Une photo existe (affichée à l'accueil) */
+  hasPhoto?: boolean;
 }
 
 export interface Payment {
@@ -64,6 +85,8 @@ export interface Payment {
   planId: number | null;
   planName: string | null;
   amount: number;
+  /** Part des frais d'inscription comprise dans le montant (première formule), sinon null */
+  registrationFee: number | null;
   method: PaymentMethod;
   status: PaymentStatus;
   receiptNumber: string | null;
@@ -123,6 +146,12 @@ export interface CheckIn {
   planName: string | null;
   endDate: string | null;
   daysLeft: number | null;
+  /** Activité pointée (null si non précisée) */
+  activityName: string | null;
+  /** Activités incluses dans la formule en cours (seulement dans la réponse à un pointage) */
+  includedActivities: string[];
+  /** Le membre a une photo (affichée à l'accueil pour le reconnaître) */
+  memberHasPhoto: boolean;
 }
 
 export interface CheckInRequest {
@@ -131,6 +160,8 @@ export interface CheckInRequest {
   method: CheckInMethod;
   clientId?: string;
   checkedAt?: string;
+  /** Activité demandée ; absente = pas de vérification d'activité */
+  activityId?: number | null;
 }
 
 export interface Subscription {
@@ -141,6 +172,8 @@ export interface Subscription {
   endDate: string;
   cancelled: boolean;
   createdAt: string;
+  /** Jours ajoutés par des gels */
+  frozenDays: number;
 }
 
 export interface ReminderQueueItem {
@@ -248,6 +281,12 @@ export interface Dashboard {
   expiring: DueMember[];
   expiredCount: number;
   expired: DueMember[];
+  /** Abonnements arrivés à échéance depuis le début de la période, et ceux déjà renouvelés */
+  renewalsDue: number;
+  renewalsDone: number;
+  /** Objectifs du mois (Paramètres), null si non fixés */
+  revenueGoal: number | null;
+  newMembersGoal: number | null;
 }
 
 export interface ReceptionToday {
@@ -293,6 +332,11 @@ export interface GymSettings {
   moovNumber: string | null;
   receiptFooter: string | null;
   expiringSoonDays: number;
+  /** Personnes accueillies en même temps (facultatif) */
+  capacity: number | null;
+  /** Objectifs du mois affichés au tableau de bord (facultatifs) */
+  revenueGoal: number | null;
+  newMembersGoal: number | null;
   cashEnabled: boolean;
   mtnEnabled: boolean;
   moovEnabled: boolean;
@@ -388,4 +432,140 @@ export interface NavCounts {
   prospectsToday: number;
   /** Abonnements qui finissent dans le seuil « expire bientôt » */
   expiringSoon: number;
+}
+
+// ---- Cours collectifs et planning (lot 5) ----
+
+/** Couleurs des cours dans le planning */
+export type CourseColor = 'mint' | 'peach' | 'lavender' | 'lime' | 'sky' | 'rose';
+
+/** Créneau hebdomadaire : jour 1 = lundi … 7 = dimanche, heure « 18:00 » */
+export interface CourseSlot {
+  id?: number;
+  courseId?: number;
+  dayOfWeek: number;
+  startTime: string;
+  /** Vide = la salle du cours */
+  room: string | null;
+  /** Vide = le coach du cours */
+  coachId: number | null;
+  coachName?: string | null;
+}
+
+export interface Course {
+  id: number;
+  name: string;
+  description: string | null;
+  coachId: number | null;
+  coachName: string | null;
+  /** Activité pointée pour ce cours (sert à compter les présents) */
+  activityId: number | null;
+  activityName: string | null;
+  durationMinutes: number;
+  capacity: number;
+  room: string | null;
+  color: CourseColor;
+  active: boolean;
+  slots: CourseSlot[];
+  /** Remplissage moyen sur 4 semaines (%), null si non mesuré */
+  avgFillPct: number | null;
+}
+
+export type CoursePayload = Omit<Course, 'id' | 'coachName' | 'activityName' | 'slots' | 'avgFillPct'>;
+
+/** Une séance du planning (créneau × date) */
+export interface CourseSession {
+  slotId: number;
+  courseId: number;
+  courseName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  coachName: string | null;
+  room: string | null;
+  capacity: number;
+  color: CourseColor;
+  /** Présents pointés sur l'activité du cours (null si à venir ou non mesuré) */
+  present: number | null;
+}
+
+export interface PlanningWeek {
+  weekStart: string;
+  sessions: CourseSession[];
+}
+
+// ---- Statistiques (GET /api/stats/management, /api/stats/sales) ----
+export type StatsPeriod = 'MONTH' | 'QUARTER' | 'YEAR';
+
+export interface MonthStat {
+  /** AAAA-MM */
+  month: string;
+  revenue: number;
+  joined: number;
+  left: number;
+}
+
+export interface ManagementStats {
+  period: StatsPeriod;
+  from: string;
+  to: string;
+  revenue: number;
+  revenuePrevious: number;
+  activeMembers: number;
+  newMembers: number;
+  renewalsDue: number;
+  renewalsDone: number;
+  avgSpendPerMemberMonth: number | null;
+  months: MonthStat[];
+  /** [lundi = 0 … dimanche = 6][heure 0–23] : entrées des dernières semaines */
+  heatmap: number[][];
+  heatmapWeeks: number;
+  plans: { plan: string; members: number }[];
+}
+
+export interface SalesStats {
+  period: StatsPeriod;
+  from: string;
+  to: string;
+  prospects: number;
+  contacted: number;
+  converted: number;
+  avgDaysToConvert: number | null;
+  sources: { source: ProspectSource; prospects: number; converted: number }[];
+  sellers: { login: string; prospects: number; converted: number; onTimePct: number | null }[];
+  remindersSent: number;
+  remindersWhatsapp: number;
+  lapsedReminded: number;
+  lapsedCameBack: number;
+}
+
+// ---- Pages publiques envoyées au membre (sans connexion) ----
+export interface PublicCard {
+  firstName: string;
+  lastName: string | null;
+  memberNumber: string | null;
+  gymName: string | null;
+  endDate: string | null;
+  state: SubscriptionState | null;
+  qrToken: string;
+}
+
+export interface PublicReceipt {
+  number: string | null;
+  status: PaymentStatus;
+  paidAt: string | null;
+  amount: number;
+  registrationFee: number | null;
+  method: PaymentMethod;
+  memberName: string;
+  planName: string | null;
+  validFrom: string | null;
+  validTo: string | null;
+  agent: string | null;
+  gymName: string | null;
+  gymAddress: string | null;
+  gymPhone: string | null;
+  footer: string | null;
+  /** Jeton de la carte du membre (bouton « Mon QR code »), absent si le reçu est annulé */
+  cardToken: string | null;
 }

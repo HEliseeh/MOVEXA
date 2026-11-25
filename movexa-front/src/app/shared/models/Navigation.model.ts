@@ -58,15 +58,6 @@ const ICONS = {
     'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6M4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4',
 };
 
-/** Page prévue dans la maquette mais pas encore développée */
-const soon = (id: string, label: string, roles?: string[]): MenuStep => ({
-  id,
-  label,
-  route: [],
-  disabled: true,
-  roles,
-});
-
 // ---------------------------------------------------------------
 // Menu latéral (maquette « Flex Club · MVP », composant Sidebar) :
 // 3 domaines séparés par un trait, sous-éléments repliés.
@@ -100,7 +91,7 @@ export const MENU_ITEMS: MenuStep[] = [
     iconPath: ICONS.calendar,
     route: [],
     children: [
-      soon('planning', 'Planning du club', GR),
+      { id: 'planning', label: 'Planning du club', route: ['/planning'], roles: GR },
       { id: 'coaches', label: 'Cours et coachs', route: ['/coaches'], roles: G },
       { id: 'subscriptions', label: 'Abonnements et échéances', route: ['/subscriptions'], roles: GR, badge: 'expiringSoon' },
       { id: 'plans', label: 'Formules et tarifs', route: ['/plans'], roles: G },
@@ -110,6 +101,6 @@ export const MENU_ITEMS: MenuStep[] = [
 
   // ---- Équipe et pilotage ----
   { id: 'team', label: 'Équipe et rôles', iconPath: ICONS.team, route: ['/team'], roles: G, groupStart: true },
-  { ...soon('stats', 'Statistiques', GC), iconPath: ICONS.chart },
+  { id: 'stats', label: 'Statistiques', iconPath: ICONS.chart, route: ['/stats'], roles: GC },
   { id: 'settings', label: 'Paramètres', iconPath: ICONS.settings, route: ['/settings'], roles: G },
 ];

@@ -1,17 +1,29 @@
 <div class="page-sheet coaches-page">
 
   <!-- ===== EN-TÊTE ===== -->
-  <header class="sheet-header">
-    <div class="co-left">
-      <h1 class="page-title">Coachs</h1>
-      <button type="button" class="btn btn-outline" [disabled]="!hasFilters()" (click)="resetFilters()">Réinitialiser les filtres</button>
-    </div>
-    @if (store.isManager()) {
-      <div class="page-actions">
-        <button type="button" class="btn btn-primary" (click)="edit()">Nouveau coach</button>
+  <header class="sheet-header sheet-header--tabs">
+    <div class="co-top">
+      <div class="co-left">
+        <h1 class="page-title">Cours et coachs</h1>
+        @if (tab() === 'coaches') {
+          <button type="button" class="btn btn-outline" [disabled]="!hasFilters()" (click)="resetFilters()">Réinitialiser les filtres</button>
+        }
       </div>
-    }
+      @if (store.isManager() && tab() === 'coaches') {
+        <div class="page-actions">
+          <button type="button" class="btn btn-primary" (click)="edit()">Nouveau coach</button>
+        </div>
+      }
+    </div>
+    <div class="tabs" role="tablist" aria-label="Cours et coachs">
+      <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'courses'" (click)="tab.set('courses')">Cours collectifs</button>
+      <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'coaches'" (click)="tab.set('coaches')">Coachs ({{ coaches().length }})</button>
+    </div>
   </header>
+
+  @if (tab() === 'courses') {
+    <app-courses-panel class="co-courses" [coaches]="coaches()" />
+  } @else {
 
   <!-- ===== DISCIPLINES ENSEIGNÉES (clic = filtre) ===== -->
   @if (disciplineSummary().length) {
@@ -76,6 +88,7 @@
   </div>
 
   <div class="card-foot">{{ rows().length }} coach(s) affiché(s) sur {{ coaches().length }}</div>
+  }
 </div>
 
 <!-- ===== POP-UP CRÉATION / MODIFICATION ===== -->

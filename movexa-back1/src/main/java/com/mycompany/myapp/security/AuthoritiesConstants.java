@@ -21,6 +21,9 @@ public final class AuthoritiesConstants {
     /** Expression @PreAuthorize pour le travail à l'accueil (pointage, encaissement, caisse) : gérant ou réceptionniste. */
     public static final String IS_DESK = "hasAnyAuthority('ROLE_ADMIN','ROLE_RECEPTION')";
 
+    /** Statistiques commerciales et suivi des prospects : gérant ou commercial. */
+    public static final String IS_SALES = "hasAnyAuthority('ROLE_ADMIN','ROLE_COMMERCIAL')";
+
     /** Personnel de la salle : seuls ces rôles accèdent à l'API métier. */
     public static final String[] STAFF = { ADMIN, RECEPTION, COMMERCIAL };
 

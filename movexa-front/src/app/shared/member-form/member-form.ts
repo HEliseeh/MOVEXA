@@ -14,11 +14,13 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { debounceTime, distinctUntilChanged, map, of, startWith, switchMap } from 'rxjs';
-import { Coach, GymSettings, MemberLite, PaymentMethod, Plan } from '@core/api/api.models';
+import { Activity, Coach, GymSettings, MemberLite, PaymentMethod, Plan } from '@core/api/api.models';
 import { MembersService, MemberDto, MemberPayload } from '@core/api/members.service';
 import { MovexaApi } from '@core/api/movexa-api.service';
+import { MemberPhoto } from '@shared/member-photo/member-photo';
+import { shrinkImage } from '@shared/image';
 import { ConfirmDialog } from '@shared/confirm-dialog/confirm-dialog';
 import { addDays, apiError, fcfa, frDate, initials, METHOD_LABELS, todayIso, whatsappLink } from '@shared/format';
 
@@ -62,7 +64,7 @@ const MESSAGES: Record<string, Record<string, string>> = {
  */
 @Component({
   selector: 'app-member-form',
-  imports: [ReactiveFormsModule, RouterLink, ConfirmDialog],
+  imports: [ReactiveFormsModule, RouterLink, ConfirmDialog, MemberPhoto],
   templateUrl: './member-form.html',
   styleUrl: './member-form.css',
 })
@@ -71,6 +73,7 @@ export class MemberForm implements OnInit {
   private readonly members = inject(MembersService);
   private readonly api = inject(MovexaApi);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly router = inject(Router);
   /** Archiver un membre : réservé au gérant */
   readonly store = inject(CurrentUserStore);
 
@@ -99,6 +102,20 @@ export class MemberForm implements OnInit {
   /** Doublon détecté pendant la saisie du téléphone */
   readonly duplicate = signal<MemberLite | null>(null);
 
+  // ---- Activités (droits d'accès) ----
+  readonly activities = signal<Activity[]>([]);
+  /** 'plan' : droits de la formule ; 'custom' : choisis un par un */
+  readonly accessMode = signal<'plan' | 'custom'>('plan');
+  readonly customIds = signal<number[]>([]);
+  /** Membre rechargé (modification) : droits actuels et photo */
+  readonly current = signal<MemberDto | null>(null);
+
+  // ---- Photo (facultative) ----
+  readonly photo = signal<Blob | null>(null);
+  readonly photoPreview = signal<string | null>(null);
+  readonly removePhoto = signal(false);
+  readonly photoError = signal<string | null>(null);
+
   readonly fcfa = fcfa;
   readonly frDate = frDate;
   readonly methodLabels = METHOD_LABELS;
@@ -120,6 +137,30 @@ export class MemberForm implements OnInit {
   });
 
   readonly plan = computed(() => this.plans().find(p => p.id === +this.values().planId) ?? null);
+
+  /** Montant de la première formule : prix + frais d'inscription (nouveau membre) */
+  readonly firstAmount = computed(() => {
+    const p = this.plan();
+    return p ? p.price + (p.registrationFee ?? 0) : 0;
+  });
+
+  /** Droits de la formule (création : formule choisie ; modification : formule en cours) */
+  readonly planRights = computed(() => {
+    if (!this.isEdit()) return this.plan()?.activityNames ?? null;
+    const m = this.current();
+    return m && !m.customAccess ? (m.activityNames ?? []) : null;
+  });
+
+  /** Activités proposées en mode « une par une » : en vente, plus celles déjà accordées */
+  readonly activityChoices = computed(() => this.activities().filter(a => a.active || this.customIds().includes(a.id)));
+
+  /** Titres numérotés des étapes, comme sur la maquette */
+  readonly step = computed(() => {
+    const create = !this.isEdit() && this.store.isDesk();
+    return create
+      ? { identity: '1 · Identité', plan: '2 · Formule', access: '3 · Activités', pay: `4 · Paiement de ${fcfa(this.firstAmount())}` }
+      : { identity: 'Identité', plan: 'Formule', access: 'Activités', pay: 'Paiement' };
+  });
   readonly initials = computed(() => initials(this.values().firstName, this.values().lastName));
   readonly fullName = computed(() => `${this.values().firstName} ${this.values().lastName}`.trim());
 
@@ -152,7 +193,7 @@ export class MemberForm implements OnInit {
     if (this.isEdit()) return 'Enregistrer les modifications';
     const p = this.plan();
     if (!p) return 'Inscrire le membre';
-    return this.method() === 'PAYMENT_LINK' ? 'Inscrire et envoyer le lien' : `Inscrire et encaisser ${fcfa(p.price)}`;
+    return this.method() === 'PAYMENT_LINK' ? 'Inscrire et envoyer le lien' : `Inscrire et encaisser ${fcfa(this.firstAmount())}`;
   });
 
   readonly errorCount = computed(() => {
@@ -186,6 +227,15 @@ export class MemberForm implements OnInit {
     const pre = this.prefill();
     if (m) {
       this.form.patchValue({ phone: m.phone ?? '', firstName: m.firstName, lastName: m.lastName, email: m.email ?? '', notes: m.notes ?? '', coachId: m.coachId ?? 0 });
+      // La liste ne porte pas les droits détaillés : on recharge le membre
+      this.members.get(m.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: full => {
+          this.current.set(full);
+          this.accessMode.set(full.customAccess ? 'custom' : 'plan');
+          this.customIds.set(full.activityIds ?? []);
+        },
+        error: () => this.current.set(m),
+      });
     } else if (pre) {
       this.form.patchValue({ phone: pre.phone ?? '', firstName: pre.firstName ?? '', lastName: pre.lastName ?? '' });
     }
@@ -193,6 +243,10 @@ export class MemberForm implements OnInit {
       this.settings.set(s);
       const first = this.methods().find(x => x.enabled);
       if (first) this.method.set(first.id);
+    });
+    this.api.activities().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: list => this.activities.set(list),
+      error: () => {},
     });
     this.api.coaches().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: list => this.coaches.set(list.filter(c => c.active || c.id === m?.coachId)),
@@ -218,10 +272,60 @@ export class MemberForm implements OnInit {
     return MESSAGES[name]?.[key] || 'Valeur invalide.';
   }
 
+  // ---- Activités ----
+
+  setAccessMode(mode: 'plan' | 'custom'): void {
+    this.accessMode.set(mode);
+    // Passage en « une par une » : on part des droits de la formule
+    if (mode === 'custom' && !this.customIds().length) {
+      const names = this.planRights() ?? [];
+      this.customIds.set(this.activities().filter(a => names.includes(a.name)).map(a => a.id));
+    }
+  }
+
+  toggleActivity(id: number, on: boolean): void {
+    this.customIds.update(ids => (on ? [...new Set([...ids, id])] : ids.filter(x => x !== id)));
+  }
+
+  // ---- Photo ----
+
+  async pickPhoto(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    this.photoError.set(null);
+    try {
+      const blob = await shrinkImage(file);
+      this.clearPreview();
+      this.photo.set(blob);
+      this.photoPreview.set(URL.createObjectURL(blob));
+      this.removePhoto.set(false);
+    } catch {
+      this.photoError.set('Cette image ne peut pas être lue. Essayez une photo JPEG ou PNG.');
+    }
+  }
+
+  dropPhoto(): void {
+    this.clearPreview();
+    this.photo.set(null);
+    this.removePhoto.set(!!this.member()?.hasPhoto);
+  }
+
+  private clearPreview(): void {
+    const url = this.photoPreview();
+    if (url) URL.revokeObjectURL(url);
+    this.photoPreview.set(null);
+  }
+
   save(): void {
     this.submitted.set(true);
     this.form.markAllAsTouched();
     if (this.form.invalid || this.duplicate()) return;
+    if (this.accessMode() === 'custom' && !this.customIds().length) {
+      this.serverError.set('Cochez au moins une activité, sinon son QR code sera refusé partout.');
+      return;
+    }
 
     const v = this.form.getRawValue();
     const payload: MemberPayload = {
@@ -231,6 +335,8 @@ export class MemberForm implements OnInit {
       email: v.email.trim() || null,
       notes: v.notes.trim() || null,
       coachId: +v.coachId || null,
+      customAccess: this.accessMode() === 'custom',
+      activityIds: this.accessMode() === 'custom' ? this.customIds() : [],
     };
     const existing = this.member();
     if (!existing) {
@@ -245,9 +351,21 @@ export class MemberForm implements OnInit {
     this.saving.set(true);
     this.serverError.set(null);
     const request = existing ? this.members.update(existing.id, payload) : this.members.create(payload);
-    request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    request
+      .pipe(
+        // Puis la photo : envoyée (ou retirée) une fois le membre enregistré
+        switchMap(member => {
+          const blob = this.photo();
+          if (blob) return this.members.savePhoto(member.id, blob).pipe(map(() => ({ ...member, hasPhoto: true })));
+          if (this.removePhoto()) return this.members.deletePhoto(member.id).pipe(map(() => ({ ...member, hasPhoto: false })));
+          return of(member);
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
       next: member => {
         this.saving.set(false);
+        this.clearPreview();
         if (existing) this.saved.emit({ member, created: false });
         else this.done.set(member);
       },
@@ -271,6 +389,14 @@ export class MemberForm implements OnInit {
   finish(): void {
     const m = this.done();
     if (m) this.saved.emit({ member: m, created: true });
+  }
+
+  /** Après l'inscription : pointer tout de suite l'entrée du membre à l'accueil */
+  checkInNow(): void {
+    const m = this.done();
+    if (!m) return;
+    this.finish();
+    this.router.navigate(['/access'], { queryParams: { member: m.id } });
   }
 
   close(): void {

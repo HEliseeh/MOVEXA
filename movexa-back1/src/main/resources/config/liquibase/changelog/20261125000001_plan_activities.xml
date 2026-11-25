@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Lot 2 MVP : formules et activités.
+        - activity : activités de la salle (musculation, cours collectifs, sauna…), modifiables par le gérant ;
+        - plan_activity : activités incluses dans chaque formule, vérifiées à chaque pointage ;
+        - plan : frais d'inscription (payés avec la première formule) et gel autorisé ;
+        - check_in : activité pour laquelle le membre a pointé ;
+        - payment : part des frais d'inscription dans le montant encaissé.
+    -->
+    <changeSet id="20261125000001-1" author="elisee">
+        <createTable tableName="activity">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(60)"><constraints nullable="false" unique="true" uniqueConstraintName="ux_activity_name"/></column>
+            <column name="position" type="integer" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="active" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+        </createTable>
+        <insert tableName="activity"><column name="name" value="Musculation et cardio"/><column name="position" valueNumeric="1"/><column name="active" valueBoolean="true"/></insert>
+        <insert tableName="activity"><column name="name" value="Cours collectifs"/><column name="position" valueNumeric="2"/><column name="active" valueBoolean="true"/></insert>
+        <insert tableName="activity"><column name="name" value="Sauna"/><column name="position" valueNumeric="3"/><column name="active" valueBoolean="true"/></insert>
+
+        <createTable tableName="plan_activity">
+            <column name="plan_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="activity_id" type="bigint"><constraints nullable="false"/></column>
+        </createTable>
+        <addPrimaryKey tableName="plan_activity" columnNames="plan_id, activity_id" constraintName="pk_plan_activity"/>
+        <addForeignKeyConstraint baseTableName="plan_activity" baseColumnNames="plan_id" constraintName="fk_plan_activity_plan"
+                                 referencedTableName="plan" referencedColumnNames="id" onDelete="CASCADE"/>
+        <addForeignKeyConstraint baseTableName="plan_activity" baseColumnNames="activity_id" constraintName="fk_plan_activity_activity"
+                                 referencedTableName="activity" referencedColumnNames="id" onDelete="CASCADE"/>
+
+        <!-- Reprise de l'existant : les formules déjà en vente donnent accès à tout, comme avant -->
+        <sql>
+            INSERT INTO plan_activity (plan_id, activity_id)
+            SELECT p.id, a.id FROM plan p CROSS JOIN activity a;
+        </sql>
+
+        <addColumn tableName="plan">
+            <column name="registration_fee" type="bigint" defaultValueNumeric="0"><constraints nullable="false"/></column>
+            <column name="freeze_allowed" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+        </addColumn>
+
+        <addColumn tableName="check_in">
+            <column name="activity_id" type="bigint"/>
+            <column name="activity_name" type="varchar(60)"/>
+        </addColumn>
+        <addForeignKeyConstraint baseTableName="check_in" baseColumnNames="activity_id" constraintName="fk_check_in_activity"
+                                 referencedTableName="activity" referencedColumnNames="id" onDelete="SET NULL"/>
+
+        <addColumn tableName="payment">
+            <column name="registration_fee" type="bigint"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

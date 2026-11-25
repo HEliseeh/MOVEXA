@@ -68,6 +68,16 @@ export class PayDialog implements OnInit {
 
   readonly plan = computed(() => this.plans().find(p => p.id === this.planId()) ?? null);
 
+  /** Frais d'inscription : seulement pour la toute première formule du membre (aucun abonnement jusqu'ici) */
+  readonly fee = computed(() => {
+    const m = this.selected();
+    const p = this.plan();
+    return m && p && !m.endDate ? (p.registrationFee ?? 0) : 0;
+  });
+
+  /** Montant normal : prix de la formule, plus les frais d'inscription la première fois */
+  readonly standardAmount = computed(() => (this.plan()?.price ?? 0) + this.fee());
+
   /** Moyens proposés selon les paramètres de la salle (le lien exige un compte marchand) */
   readonly methods = computed(() => {
     const s = this.settings();
@@ -134,11 +144,12 @@ export class PayDialog implements OnInit {
     this.query.set('');
     const current = this.plans().find(p => p.name === m.planName);
     if (current) this.pickPlan(current.id);
+    else this.amount.set(this.plan() ? this.standardAmount() : null);
   }
 
   pickPlan(id: number | null): void {
     this.planId.set(id);
-    this.amount.set(this.plans().find(p => p.id === id)?.price ?? null);
+    this.amount.set(this.plan() ? this.standardAmount() : null);
   }
 
   submit(): void {
@@ -151,7 +162,14 @@ export class PayDialog implements OnInit {
     this.saving.set(true);
     this.error.set(null);
     this.api
-      .pay({ memberId: m.id, planId: plan.id, method: this.method(), amount: this.amount(), reference: this.reference().trim() || null })
+      // Montant normal : on laisse le serveur le calculer (il enregistre alors la part des frais d'inscription)
+      .pay({
+        memberId: m.id,
+        planId: plan.id,
+        method: this.method(),
+        amount: this.amount() === this.standardAmount() ? null : this.amount(),
+        reference: this.reference().trim() || null,
+      })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: p => {

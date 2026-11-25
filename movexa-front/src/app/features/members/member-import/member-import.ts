@@ -110,6 +110,25 @@ export class MemberImport {
     this.send(false);
   }
 
+  /** Lignes refusées (téléphone manquant, données à corriger), à renvoyer corrigées */
+  readonly rejected = computed(() => (this.result() ?? this.check())?.lines.filter(l => l.status === 'MISSING_PHONE' || l.status === 'INVALID') ?? []);
+
+  /** Modèle vide : les colonnes que la page reconnaît toute seule */
+  downloadTemplate(): void {
+    saveCsv('modele-membres.csv', [
+      ['Nom et prénom', 'Téléphone', 'Formule', 'Date de fin'],
+      ['Awa DIALLO', '97 41 22 08', 'Mensuel', '15/11/2026'],
+    ]);
+  }
+
+  /** Les lignes refusées du fichier d'origine, avec la raison, pour les corriger et les réimporter */
+  downloadRejected(): void {
+    const header = this.rows()[0] ?? [];
+    const data = this.dataRows();
+    const lines = this.rejected().map(l => [...(data[l.line - 2] ?? []), l.message]);
+    saveCsv('lignes-a-corriger.csv', [[...header, 'Problème'], ...lines]);
+  }
+
   restart(): void {
     this.step.set(1);
     this.rows.set([]);
@@ -168,6 +187,18 @@ export class MemberImport {
       endDate: parseDate(value(row, 'endDate')),
     }));
   }
+}
+
+/** Fichier CSV lisible par Excel (point-virgule, BOM UTF-8) */
+function saveCsv(name: string, rows: string[][]): void {
+  const cell = (v: string) => (/[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v);
+  const text = '\ufeff' + rows.map(r => r.map(c => cell(c ?? '')).join(';')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /** Devine le champ d'une colonne d'après son titre */

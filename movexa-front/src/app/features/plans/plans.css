@@ -1,0 +1,223 @@
+.pl-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.pl-sub {
+  margin: 4px 0 0;
+}
+
+.pl-alert {
+  margin: var(--space-4) var(--space-5) 0;
+}
+
+.pl-body {
+  padding: var(--space-5);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .pl-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---- Cartes des formules ---- */
+.pl-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.pl-card {
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.pl-card:hover {
+  border-color: var(--color-text-muted);
+}
+
+.pl-card--on {
+  box-shadow: inset 0 0 0 2px #12262a;
+  border-color: #12262a;
+}
+
+.pl-card--off {
+  opacity: 0.65;
+}
+
+.pl-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pl-name {
+  font-weight: var(--font-weight-bold);
+  font-size: 16px;
+}
+
+.pl-price {
+  font-size: 26px;
+  font-weight: var(--font-weight-black);
+}
+
+.pl-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pl-tag--best {
+  background: var(--ds-pastel-peach, #fde3c0);
+  color: #12262a;
+}
+
+.pl-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pl-chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-surface-raised, #f2f5f4);
+  border: 1px solid var(--color-border);
+  font-size: 12px;
+}
+
+.pl-card-foot {
+  margin-top: auto;
+  padding-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---- Panneau d'édition ---- */
+.pl-editor {
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.pl-editor .card-title {
+  margin: 0;
+}
+
+.pl-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-4);
+}
+
+.pl-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pl-fieldset legend {
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.pl-label {
+  display: block;
+}
+
+.pl-freeze {
+  align-items: flex-start;
+}
+
+.pl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* ---- Activités de la salle ---- */
+.pl-activities {
+  padding: 0 var(--space-5) var(--space-5);
+}
+
+.pl-act-list {
+  margin: var(--space-3, 12px) 0;
+  padding: 0;
+  list-style: none;
+  max-width: 720px;
+}
+
+.pl-act {
+  min-height: 44px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3, 12px);
+  border-bottom: 1px solid var(--color-border-soft, var(--color-border));
+}
+
+.pl-act--off {
+  color: var(--color-text-muted);
+}
+
+.pl-act-btns {
+  margin-left: auto;
+  display: flex;
+  gap: var(--space-3, 12px);
+}
+
+.pl-act-input {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.pl-act-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3, 12px);
+  max-width: 720px;
+}
+
+.pl-act-add .input-line {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
