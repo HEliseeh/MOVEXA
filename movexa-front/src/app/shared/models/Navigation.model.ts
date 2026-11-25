@@ -100,7 +100,7 @@ export const MENU_ITEMS: MenuStep[] = [
     iconPath: ICONS.calendar,
     route: [],
     children: [
-      soon('planning', 'Planning du club', GR),
+      { id: 'planning', label: 'Planning du club', route: ['/planning'], roles: GR },
       { id: 'coaches', label: 'Cours et coachs', route: ['/coaches'], roles: G },
       { id: 'subscriptions', label: 'Abonnements et échéances', route: ['/subscriptions'], roles: GR, badge: 'expiringSoon' },
       { id: 'plans', label: 'Formules et tarifs', route: ['/plans'], roles: G },

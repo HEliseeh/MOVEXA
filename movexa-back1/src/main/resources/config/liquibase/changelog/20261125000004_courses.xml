@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!--
+        Lot 5 MVP : cours collectifs et planning du club (sans réservation).
+        - course : un cours (Zumba, cardio-boxe…) avec son coach, sa durée, ses places et l'activité pointée ;
+        - course_slot : ses créneaux hebdomadaires (jour 1 = lundi … 7 = dimanche, heure de début),
+          avec une salle ou un coach différents si besoin.
+        La présence est comptée à partir des pointages sur l'activité du cours.
+    -->
+    <changeSet id="20261125000004-1" author="elisee">
+        <createTable tableName="course">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="varchar(80)"><constraints nullable="false"/></column>
+            <column name="description" type="varchar(120)"/>
+            <column name="coach_id" type="bigint"/>
+            <column name="activity_id" type="bigint"/>
+            <column name="duration_minutes" type="integer" defaultValueNumeric="60"><constraints nullable="false"/></column>
+            <column name="capacity" type="integer"><constraints nullable="false"/></column>
+            <column name="room" type="varchar(60)"/>
+            <column name="color" type="varchar(20)" defaultValue="mint"><constraints nullable="false"/></column>
+            <column name="active" type="boolean" defaultValueBoolean="true"><constraints nullable="false"/></column>
+            <column name="created_at" type="timestamp"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="course" baseColumnNames="coach_id" constraintName="fk_course_coach"
+                                 referencedTableName="coach" referencedColumnNames="id" onDelete="SET NULL"/>
+        <addForeignKeyConstraint baseTableName="course" baseColumnNames="activity_id" constraintName="fk_course_activity"
+                                 referencedTableName="activity" referencedColumnNames="id" onDelete="SET NULL"/>
+
+        <createTable tableName="course_slot">
+            <column name="id" type="bigint" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="course_id" type="bigint"><constraints nullable="false"/></column>
+            <column name="day_of_week" type="integer"><constraints nullable="false"/></column>
+            <column name="start_time" type="time"><constraints nullable="false"/></column>
+            <column name="room" type="varchar(60)"/>
+            <column name="coach_id" type="bigint"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="course_slot" baseColumnNames="course_id" constraintName="fk_course_slot_course"
+                                 referencedTableName="course" referencedColumnNames="id" onDelete="CASCADE"/>
+        <addForeignKeyConstraint baseTableName="course_slot" baseColumnNames="coach_id" constraintName="fk_course_slot_coach"
+                                 referencedTableName="coach" referencedColumnNames="id" onDelete="SET NULL"/>
+        <createIndex tableName="course_slot" indexName="idx_course_slot_course"><column name="course_id"/></createIndex>
+    </changeSet>
+</databaseChangeLog>

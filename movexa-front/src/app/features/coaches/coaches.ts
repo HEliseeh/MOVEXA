@@ -6,6 +6,7 @@ import { MovexaApi } from '@core/api/movexa-api.service';
 import { CurrentUserStore } from '@core/auth/current-user.store';
 import { ToastService } from '@core/notifications/toast.service';
 import { FilterOption, matchesAny, MultiFilter } from '@shared/column-filter/column-filter';
+import { CoursesPanel } from './courses-panel/courses-panel';
 import { ConfirmDialog } from '@shared/confirm-dialog/confirm-dialog';
 import { apiError, initials, whatsappLink } from '@shared/format';
 
@@ -32,7 +33,7 @@ const EMPTY_DRAFT: CoachDraft = {
  */
 @Component({
   selector: 'app-coaches',
-  imports: [FormsModule, MultiFilter, ConfirmDialog],
+  imports: [FormsModule, MultiFilter, ConfirmDialog, CoursesPanel],
   templateUrl: './coaches.html',
   styleUrl: './coaches.css',
 })
@@ -46,6 +47,8 @@ export class Coaches implements OnInit {
   readonly whatsappLink = whatsappLink;
 
   readonly coaches = signal<Coach[]>([]);
+  /** Onglet : cours collectifs ou équipe de coachs */
+  readonly tab = signal<'courses' | 'coaches'>('courses');
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
   /** Disciplines connues (suggestions du formulaire) */

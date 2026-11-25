@@ -31,4 +31,11 @@ public interface CheckInRepository extends JpaRepository<CheckIn, Long> {
         "and c.result not in (com.mycompany.myapp.domain.enumeration.CheckInResult.REFUSED, com.mycompany.myapp.domain.enumeration.CheckInResult.REFUSED_ACTIVITY)"
     )
     List<Instant> findAllowedTimesSince(@Param("since") Instant since);
+
+    /** Entrées autorisées avec une activité, sur une période : [activityId, memberId, checkedAt] (présence aux cours) */
+    @Query(
+        "select c.activity.id, c.member.id, c.checkedAt from CheckIn c where c.checkedAt >= :from and c.checkedAt < :to " +
+        "and c.activity is not null and c.result not in (com.mycompany.myapp.domain.enumeration.CheckInResult.REFUSED, com.mycompany.myapp.domain.enumeration.CheckInResult.REFUSED_ACTIVITY)"
+    )
+    List<Object[]> findActivityEntriesBetween(@Param("from") Instant from, @Param("to") Instant to);
 }

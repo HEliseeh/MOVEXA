@@ -1,0 +1,131 @@
+<div class="cp-bar">
+  <p class="help cp-sub">{{ courses().length }} cours · {{ sessionsPerWeek() }} séances par semaine · <a routerLink="/planning">Voir le planning</a></p>
+  <button type="button" class="btn btn-primary" (click)="edit()">Nouveau cours</button>
+</div>
+
+@if (loadError(); as e) {
+  <div class="alert alert--error cp-alert" role="alert">{{ e }} <button type="button" class="link-btn" (click)="load()">Réessayer</button></div>
+}
+
+<div class="cp-scroll">
+  <div class="cp-table">
+    <div class="grid-row grid-row--head">
+      <span>Cours</span><span>Coach</span><span>Durée</span><span>Places</span><span>Créneaux</span><span>Remplissage moyen</span><span></span>
+    </div>
+    @for (c of courses(); track c.id) {
+      <div class="grid-row" [class.cp-row--off]="!c.active">
+        <span class="cp-name">
+          <span class="cp-swatch" [style.background]="colors[c.color].bg" aria-hidden="true"></span>
+          <span>
+            <span class="text-strong">{{ c.name }}</span>
+            @if (c.description) { <span class="help cp-desc">{{ c.description }}</span> }
+            @if (!c.active) { <span class="help cp-desc">Plus proposé</span> }
+          </span>
+        </span>
+        <span>{{ c.coachName ?? '—' }}</span>
+        <span>{{ duration(c.durationMinutes) }}</span>
+        <span>{{ c.capacity }} places</span>
+        <span>{{ c.slots.length ? slotSummary(c.slots) : 'Aucun créneau' }}</span>
+        <span>
+          @if (c.avgFillPct !== null) {
+            <span class="cp-bar-fill" role="img" [attr.aria-label]="c.avgFillPct + ' %'"><span [style.width.%]="c.avgFillPct"></span></span>
+            {{ c.avgFillPct }} %
+          } @else {
+            <span class="help">{{ c.activityName ? 'Pas encore de séance' : 'Activité non choisie' }}</span>
+          }
+        </span>
+        <span class="text-right"><button type="button" class="btn btn-outline btn-sm" (click)="edit(c)">Modifier</button></span>
+      </div>
+    } @empty {
+      @if (!loading()) { <p class="empty">Aucun cours pour l’instant. Créez le premier avec « Nouveau cours ».</p> }
+    }
+  </div>
+</div>
+<p class="help cp-note">Remplissage moyen = présents / places sur les 4 dernières semaines. Les présents sont les membres qui ont pointé l’activité du cours.</p>
+
+<!-- ===== POP-UP COURS ===== -->
+@if (draft(); as d) {
+  <div class="modal-backdrop" (keydown.escape)="close()">
+    <form class="modal modal--s" role="dialog" aria-modal="true" aria-labelledby="cp-title" (ngSubmit)="save()">
+      <header class="modal-head">
+        <div class="modal-head-text"><h2 id="cp-title" class="modal-title">{{ d.id ? 'Modifier le cours' : 'Nouveau cours' }}</h2></div>
+      </header>
+      <div class="modal-body">
+        @if (formError(); as e) { <div class="alert alert--error" role="alert">{{ e }}</div> }
+        <div class="cp-pair">
+          <div class="field">
+            <label for="cp-name">Nom</label>
+            <input id="cp-name" name="name" class="input-line" maxlength="80" placeholder="Ex. Zumba, Cardio-boxe…" [ngModel]="d.name" (ngModelChange)="patch({ name: $event })" />
+          </div>
+          <div class="field">
+            <label for="cp-desc">Niveau ou description</label>
+            <input id="cp-desc" name="desc" class="input-line" maxlength="120" placeholder="Ex. Tous niveaux · intense" [ngModel]="d.description" (ngModelChange)="patch({ description: $event })" />
+          </div>
+        </div>
+        <div class="cp-pair">
+          <div class="field">
+            <label for="cp-coach">Coach</label>
+            <select id="cp-coach" name="coach" class="input-line" [ngModel]="d.coachId" (ngModelChange)="patch({ coachId: $event })">
+              <option [ngValue]="null">Aucun</option>
+              @for (c of activeCoaches(); track c.id) { <option [ngValue]="c.id">{{ c.firstName }} {{ c.lastName ?? '' }}</option> }
+            </select>
+          </div>
+          <div class="field">
+            <label for="cp-act">Activité pointée</label>
+            <select id="cp-act" name="activity" class="input-line" [ngModel]="d.activityId" (ngModelChange)="patch({ activityId: $event })">
+              <option [ngValue]="null">Aucune (présents non comptés)</option>
+              @for (a of activities(); track a.id) { <option [ngValue]="a.id">{{ a.name }}</option> }
+            </select>
+          </div>
+        </div>
+        <div class="cp-pair">
+          <div class="field">
+            <label for="cp-dur">Durée (minutes)</label>
+            <input id="cp-dur" name="duration" class="input-line" type="number" min="15" max="300" step="5" [ngModel]="d.durationMinutes" (ngModelChange)="patch({ durationMinutes: $event })" />
+          </div>
+          <div class="field">
+            <label for="cp-cap">Places</label>
+            <input id="cp-cap" name="capacity" class="input-line" type="number" min="1" max="500" [ngModel]="d.capacity" (ngModelChange)="patch({ capacity: $event })" />
+          </div>
+          <div class="field">
+            <label for="cp-room">Salle</label>
+            <input id="cp-room" name="room" class="input-line" maxlength="60" placeholder="Ex. Salle de combat" [ngModel]="d.room" (ngModelChange)="patch({ room: $event })" />
+          </div>
+        </div>
+        <fieldset class="cp-colors">
+          <legend>Couleur dans le planning</legend>
+          @for (k of colorKeys; track k) {
+            <button type="button" class="cp-color" [style.background]="colors[k].bg" [attr.aria-pressed]="d.color === k"
+                    [attr.aria-label]="colors[k].label" (click)="patch({ color: k })"></button>
+          }
+        </fieldset>
+        <label class="checkbox-label"><input type="checkbox" name="active" [ngModel]="d.active" (ngModelChange)="patch({ active: $event })" /> Proposé (affiché dans le planning)</label>
+
+        @if (d.id) {
+          <div class="cp-slots">
+            <h3 class="cp-slots-title">Créneaux de la semaine</h3>
+            @for (s of draftSlots(); track s.id) {
+              <div class="cp-slot">
+                <span>{{ slotLabel(s) }}</span>
+                <button type="button" class="link-btn" (click)="slotDialog.set({ slot: s, courseId: d.id! })">Modifier</button>
+              </div>
+            } @empty {
+              <p class="help">Aucun créneau : ce cours n’apparaît pas encore dans le planning.</p>
+            }
+            <button type="button" class="btn btn-outline btn-sm" (click)="slotDialog.set({ slot: null, courseId: d.id! })">Ajouter un créneau</button>
+          </div>
+        } @else {
+          <p class="help">Les créneaux (jours et heures) s’ajoutent une fois le cours enregistré.</p>
+        }
+      </div>
+      <footer class="modal-foot cp-foot">
+        <button type="button" class="btn btn-outline" [disabled]="saving()" (click)="close()">{{ d.id ? 'Fermer' : 'Annuler' }}</button>
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">{{ saving() ? 'Enregistrement…' : 'Enregistrer' }}</button>
+      </footer>
+    </form>
+  </div>
+}
+
+@if (slotDialog(); as sd) {
+  <app-slot-dialog [courses]="courses()" [slot]="sd.slot" [defaultCourseId]="sd.courseId" (saved)="onSlotSaved()" (closed)="slotDialog.set(null)" />
+}

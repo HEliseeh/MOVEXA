@@ -5,6 +5,10 @@ import { environment } from '../../../environments/environment';
 import { silent } from '../loading/loading.interceptor';
 import {
   Activity,
+  Course,
+  CoursePayload,
+  CourseSlot,
+  PlanningWeek,
   CashClosure,
   CashDay,
   CheckIn,
@@ -62,6 +66,30 @@ export class MovexaApi {
   }
   updatePlan(id: number, p: PlanPayload): Observable<Plan> {
     return this.http.put<Plan>(`${this.api}/plans/${id}`, p);
+  }
+
+  // ---- Cours collectifs et planning ----
+  courses(): Observable<Course[]> {
+    return this.http.get<Course[]>(`${this.api}/courses`);
+  }
+  createCourse(c: CoursePayload): Observable<Course> {
+    return this.http.post<Course>(`${this.api}/courses`, c);
+  }
+  updateCourse(id: number, c: CoursePayload): Observable<Course> {
+    return this.http.put<Course>(`${this.api}/courses/${id}`, c);
+  }
+  addSlot(courseId: number, s: CourseSlot): Observable<CourseSlot> {
+    return this.http.post<CourseSlot>(`${this.api}/courses/${courseId}/slots`, s);
+  }
+  updateSlot(id: number, s: CourseSlot): Observable<CourseSlot> {
+    return this.http.put<CourseSlot>(`${this.api}/course-slots/${id}`, s);
+  }
+  deleteSlot(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.api}/course-slots/${id}`);
+  }
+  /** Séances de la semaine contenant ce jour (aaaa-mm-jj) */
+  planning(week: string): Observable<PlanningWeek> {
+    return this.http.get<PlanningWeek>(`${this.api}/planning`, { params: { week } });
   }
 
   // ---- Activités de la salle ----

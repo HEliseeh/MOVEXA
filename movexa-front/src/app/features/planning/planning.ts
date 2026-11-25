@@ -1,114 +1,154 @@
-import { Component, computed, signal } from '@angular/core';
-import { NgClass } from '@angular/common';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
+import { Course, CourseSession, CourseSlot } from '@core/api/api.models';
+import { MovexaApi } from '@core/api/movexa-api.service';
+import { CurrentUserStore } from '@core/auth/current-user.store';
+import { ToastService } from '@core/notifications/toast.service';
+import { COURSE_COLORS, WEEK_DAYS } from '@shared/course-colors';
+import { addDays, apiError, todayIso } from '@shared/format';
+import { SlotDialog } from '@shared/slot-dialog/slot-dialog';
 
-export type CourseStatus = 'disponible' | 'complet' | 'annulé';
+const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
-export interface Course {
-  id: number;
-  time: string;
-  name: string;
-  coach: string;
-  enrolled: number;
-  capacity: number;
-  status: CourseStatus;
+/** Lundi de la semaine qui contient ce jour (aaaa-mm-jj) */
+function mondayOf(iso: string): string {
+  const d = new Date(iso + 'T12:00:00');
+  const dow = d.getDay() === 0 ? 7 : d.getDay();
+  return addDays(iso, 1 - dow);
 }
 
-export interface WeekDay {
-  label: string;   // 'Lun'
-  date: number;    // 12
-  iso: string;     // '2026-10-12'
-  courses: Course[];
-}
-
-export interface CoachEntry {
-  initials: string;
-  name: string;
-  coursesThisWeek: number;
-}
-
-function makeDay(label: string, date: number, iso: string, courses: Course[]): WeekDay {
-  return { label, date, iso, courses };
-}
-
-const WEEK_START = new Date('2026-10-12');
-
-function isoDate(offset: number): string {
-  const d = new Date(WEEK_START);
-  d.setDate(d.getDate() + offset);
-  return d.toISOString().slice(0, 10);
-}
-
-const WEEK: WeekDay[] = [
-  makeDay('Lun', 12, isoDate(0), [
-    { id: 1, time: '07:00', name: 'Cross training', coach: 'Alex M.',  enrolled: 8,  capacity: 12, status: 'disponible' },
-    { id: 2, time: '18:00', name: 'Renforcement',   coach: 'Sarah K.', enrolled: 10, capacity: 12, status: 'disponible' },
-  ]),
-  makeDay('Mar', 13, isoDate(1), [
-    { id: 3, time: '12:30', name: 'Yoga',  coach: 'Léa D.', enrolled: 6,  capacity: 10, status: 'disponible' },
-    { id: 4, time: '18:30', name: 'Boxe',  coach: 'Omar T.', enrolled: 12, capacity: 12, status: 'complet' },
-  ]),
-  makeDay('Mer', 14, isoDate(2), [
-    { id: 5,  time: '07:00', name: 'Cross training', coach: 'Alex M.',  enrolled: 9,  capacity: 12, status: 'disponible' },
-    { id: 6,  time: '12:30', name: 'Pilates',        coach: 'Léa D.',  enrolled: 8,  capacity: 10, status: 'disponible' },
-    { id: 7,  time: '19:00', name: 'Cardio',         coach: 'Sarah K.', enrolled: 10, capacity: 10, status: 'complet' },
-  ]),
-  makeDay('Jeu', 15, isoDate(3), [
-    { id: 8,  time: '07:00', name: 'Renforcement', coach: 'Alex M.',  enrolled: 7,  capacity: 12, status: 'disponible' },
-    { id: 9,  time: '17:30', name: 'Yoga',         coach: 'Léa D.',  enrolled: 9,  capacity: 10, status: 'disponible' },
-  ]),
-  makeDay('Ven', 16, isoDate(4), [
-    { id: 10, time: '12:30', name: 'Cross training', coach: 'Omar T.', enrolled: 11, capacity: 12, status: 'disponible' },
-    { id: 11, time: '18:00', name: 'Cardio',         coach: 'Sarah K.', enrolled: 10, capacity: 10, status: 'complet' },
-  ]),
-  makeDay('Sam', 17, isoDate(5), [
-    { id: 12, time: '09:00', name: 'Boxe',       coach: 'Omar T.', enrolled: 8,  capacity: 12, status: 'disponible' },
-    { id: 13, time: '10:30', name: 'Stretching', coach: 'Léa D.',  enrolled: 6,  capacity: 12, status: 'disponible' },
-  ]),
-  makeDay('Dim', 18, isoDate(6), [
-    { id: 14, time: '10:00', name: 'Yoga', coach: 'Léa D.', enrolled: 7, capacity: 10, status: 'disponible' },
-  ]),
-];
-
-const TODAY_ISO = '2026-10-14'; // mercredi 14 oct.
-
+/**
+ * Planning du club (maquette « Planning du club ») : les séances de la semaine, jour par jour.
+ * Pas de réservation dans le MVP : une séance passée affiche les présents (pointages sur l'activité du cours).
+ * Le gérant ajoute, déplace ou supprime les créneaux ; l'accueil consulte.
+ */
 @Component({
   selector: 'app-planning',
-  imports: [NgClass],
+  imports: [RouterLink, SlotDialog],
   templateUrl: './planning.html',
   styleUrl: './planning.css',
 })
-export class Planning {
-  readonly weekLabel = 'Semaine du 12 au 18 octobre 2026';
-  readonly week = WEEK;
-  readonly todayIso = TODAY_ISO;
+export class Planning implements OnInit {
+  private readonly api = inject(MovexaApi);
+  private readonly toast = inject(ToastService);
+  private readonly destroyRef = inject(DestroyRef);
+  readonly store = inject(CurrentUserStore);
 
-  readonly coaches: CoachEntry[] = [
-    { initials: 'AM', name: 'Alex Morel',    coursesThisWeek: 3 },
-    { initials: 'LD', name: 'Léa Dubois',    coursesThisWeek: 4 },
-    { initials: 'SK', name: 'Sarah Konaté',  coursesThisWeek: 3 },
-    { initials: 'OT', name: 'Omar Traoré',   coursesThisWeek: 3 },
-  ];
+  readonly colors = COURSE_COLORS;
+  readonly today = todayIso();
 
-  selectedDay = signal<string>(TODAY_ISO);
+  readonly weekStart = signal(mondayOf(todayIso()));
+  readonly sessions = signal<CourseSession[]>([]);
+  readonly courses = signal<Course[]>([]);
+  readonly loading = signal(true);
+  readonly error = signal<string | null>(null);
+  readonly selected = signal<CourseSession | null>(null);
 
-  readonly selectedDayData = computed(() =>
-    this.week.find(d => d.iso === this.selectedDay()) ?? this.week[0]
+  /** Pop-up créneau : null = fermée ; slot null = ajout */
+  readonly slotDialog = signal<{ slot: CourseSlot | null; day: number } | null>(null);
+
+  readonly weekLabel = computed(() => {
+    const start = new Date(this.weekStart() + 'T12:00:00');
+    const end = new Date(addDays(this.weekStart(), 6) + 'T12:00:00');
+    const sameMonth = start.getMonth() === end.getMonth();
+    return sameMonth
+      ? `${start.getDate()} – ${end.getDate()} ${MONTHS[end.getMonth()]} ${end.getFullYear()}`
+      : `${start.getDate()} ${MONTHS[start.getMonth()]} – ${end.getDate()} ${MONTHS[end.getMonth()]} ${end.getFullYear()}`;
+  });
+
+  readonly days = computed(() =>
+    WEEK_DAYS.map(([n, , short], i) => {
+      const iso = addDays(this.weekStart(), i);
+      return {
+        n,
+        iso,
+        label: `${short} ${Number(iso.slice(8))}`,
+        today: iso === this.today,
+        sessions: this.sessions().filter(s => s.date === iso),
+      };
+    }),
   );
 
-  selectDay(iso: string): void {
-    this.selectedDay.set(iso);
+  readonly summary = computed(() => {
+    const list = this.sessions();
+    const measured = list.filter(s => s.present !== null);
+    const places = list.reduce((n, s) => n + s.capacity, 0);
+    const present = measured.reduce((n, s) => n + (s.present ?? 0), 0);
+    return { count: list.length, places, present, measured: measured.length };
+  });
+
+  ngOnInit(): void {
+    this.load();
+    if (this.store.isManager()) {
+      this.api.courses().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: c => this.courses.set(c), error: () => {} });
+    }
   }
 
-  statusClass(status: CourseStatus): string {
-    const map: Record<CourseStatus, string> = {
-      disponible: 'status-disponible',
-      complet:    'status-complet',
-      annulé:     'status-annule',
-    };
-    return map[status];
+  load(): void {
+    this.loading.set(true);
+    this.api
+      .planning(this.weekStart())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: w => {
+          this.sessions.set(w.sessions);
+          this.loading.set(false);
+          this.error.set(null);
+          const sel = this.selected();
+          this.selected.set(sel ? (w.sessions.find(s => s.slotId === sel.slotId && s.date === sel.date) ?? null) : null);
+        },
+        error: err => {
+          this.loading.set(false);
+          this.error.set(apiError(err, 'Planning indisponible.'));
+        },
+      });
   }
 
-  enrollLabel(c: Course): string {
-    return `${c.enrolled}/${c.capacity} inscrits`;
+  moveWeek(delta: number): void {
+    this.weekStart.set(delta === 0 ? mondayOf(this.today) : addDays(this.weekStart(), 7 * delta));
+    this.selected.set(null);
+    this.load();
+  }
+
+  /** « 14 présents sur 20 » pour une séance passée, sinon « 20 places » */
+  fillText(s: CourseSession): string {
+    return s.present === null ? `${s.capacity} places` : `${s.present} présent${s.present > 1 ? 's' : ''} sur ${s.capacity}`;
+  }
+
+  isPast(s: CourseSession): boolean {
+    return s.present !== null;
+  }
+
+  dateLabel(s: CourseSession): string {
+    const d = new Date(s.date + 'T12:00:00');
+    const day = WEEK_DAYS[(d.getDay() + 6) % 7][1];
+    return `${day} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  }
+
+  // ---- Créneaux (gérant) ----
+
+  addSlot(day = 1): void {
+    if (!this.courses().length) {
+      this.toast.error('Créez d’abord un cours dans « Cours et coachs ».');
+      return;
+    }
+    this.slotDialog.set({ slot: null, day });
+  }
+
+  editSelected(): void {
+    const s = this.selected();
+    if (!s) return;
+    const slot = this.courses()
+      .find(c => c.id === s.courseId)
+      ?.slots.find(x => x.id === s.slotId);
+    if (slot) this.slotDialog.set({ slot: { ...slot, courseId: s.courseId }, day: slot.dayOfWeek });
+  }
+
+  onSlotSaved(): void {
+    this.slotDialog.set(null);
+    this.toast.success('Planning mis à jour.');
+    this.api.courses().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({ next: c => this.courses.set(c), error: () => {} });
+    this.load();
   }
 }

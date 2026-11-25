@@ -76,7 +76,7 @@ public class ActivityService {
     }
 
     private static String clean(String value) {
-        String s = value.trim().replaceAll("\s+", " ");
+        String s = value.trim().replaceAll("\\s+", " ");
         return s.substring(0, 1).toUpperCase(Locale.FRENCH) + s.substring(1);
     }
 

@@ -424,3 +424,63 @@ export interface NavCounts {
   /** Abonnements qui finissent dans le seuil « expire bientôt » */
   expiringSoon: number;
 }
+
+// ---- Cours collectifs et planning (lot 5) ----
+
+/** Couleurs des cours dans le planning */
+export type CourseColor = 'mint' | 'peach' | 'lavender' | 'lime' | 'sky' | 'rose';
+
+/** Créneau hebdomadaire : jour 1 = lundi … 7 = dimanche, heure « 18:00 » */
+export interface CourseSlot {
+  id?: number;
+  courseId?: number;
+  dayOfWeek: number;
+  startTime: string;
+  /** Vide = la salle du cours */
+  room: string | null;
+  /** Vide = le coach du cours */
+  coachId: number | null;
+  coachName?: string | null;
+}
+
+export interface Course {
+  id: number;
+  name: string;
+  description: string | null;
+  coachId: number | null;
+  coachName: string | null;
+  /** Activité pointée pour ce cours (sert à compter les présents) */
+  activityId: number | null;
+  activityName: string | null;
+  durationMinutes: number;
+  capacity: number;
+  room: string | null;
+  color: CourseColor;
+  active: boolean;
+  slots: CourseSlot[];
+  /** Remplissage moyen sur 4 semaines (%), null si non mesuré */
+  avgFillPct: number | null;
+}
+
+export type CoursePayload = Omit<Course, 'id' | 'coachName' | 'activityName' | 'slots' | 'avgFillPct'>;
+
+/** Une séance du planning (créneau × date) */
+export interface CourseSession {
+  slotId: number;
+  courseId: number;
+  courseName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  coachName: string | null;
+  room: string | null;
+  capacity: number;
+  color: CourseColor;
+  /** Présents pointés sur l'activité du cours (null si à venir ou non mesuré) */
+  present: number | null;
+}
+
+export interface PlanningWeek {
+  weekStart: string;
+  sessions: CourseSession[];
+}

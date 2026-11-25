@@ -86,6 +86,12 @@ export const routes: Routes = [
         loadComponent: () => import('@features/subscriptions/subscriptions').then(m => m.Subscriptions),
       },
       {
+        path: 'planning',
+        canActivate: [roleGuard],
+        data: DESK,
+        loadComponent: () => import('@features/planning/planning').then(m => m.Planning),
+      },
+      {
         path: 'plans',
         canActivate: [roleGuard],
         data: MANAGER_ONLY,
