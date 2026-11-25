@@ -350,7 +350,7 @@ export interface ImportResult {
 }
 
 /** Rôle d'un compte du personnel. OTHER : compte sans rôle MOVEXA (aucun accès). */
-export type StaffRole = 'MANAGER' | 'RECEPTION' | 'OTHER';
+export type StaffRole = 'MANAGER' | 'RECEPTION' | 'COMMERCIAL' | 'OTHER';
 
 /** Compte du personnel (gateway, GET /api/admin/staff) */
 export interface StaffAccount {
@@ -380,4 +380,12 @@ export interface UpdateStaffPayload {
   email: string;
   role: StaffRole;
   activated: boolean;
+}
+
+/** Pastilles du menu latéral (GET /api/nav-counts) */
+export interface NavCounts {
+  /** Prospects à relancer aujourd'hui */
+  prospectsToday: number;
+  /** Abonnements qui finissent dans le seuil « expire bientôt » */
+  expiringSoon: number;
 }

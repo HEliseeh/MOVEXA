@@ -97,7 +97,9 @@
               <div class="actions">
                 <a class="btn btn--outline" [routerLink]="['/members', m.id]">Ouvrir la fiche</a>
                 <button type="button" class="btn btn--outline" (click)="editing.set(m)">Modifier</button>
-                <button type="button" class="btn btn--dark" (click)="renew(m)">Renouveler</button>
+                @if (store.isDesk()) {
+                  <button type="button" class="btn btn--dark" (click)="renew(m)">Renouveler</button>
+                }
               </div>
             </div>
           }

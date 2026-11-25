@@ -69,7 +69,8 @@ export class Subscriptions implements OnInit {
   readonly toCollect = computed(() => this.rows().filter(m => m.state !== 'ACTIVE').reduce((t, m) => t + (this.priceOf(m) ?? 0), 0));
 
   ngOnInit(): void {
-    const tab = this.route.snapshot.queryParamMap.get('tab') as Tab | null;
+    // Onglet imposé par la route (/plans = « Formules et tarifs ») ou demandé dans l'adresse (?tab=expired)
+    const tab = (this.route.snapshot.data['tab'] ?? this.route.snapshot.queryParamMap.get('tab')) as Tab | null;
     if (tab) this.tab.set(tab);
     this.api.settings().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(s => {
       this.threshold.set(s.expiringSoonDays);

@@ -16,6 +16,7 @@ public final class StaffDTOs {
     public enum StaffRole {
         MANAGER,
         RECEPTION,
+        COMMERCIAL,
         OTHER,
     }
 

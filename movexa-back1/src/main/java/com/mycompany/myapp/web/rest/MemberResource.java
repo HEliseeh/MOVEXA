@@ -1,6 +1,7 @@
 package com.mycompany.myapp.web.rest;
 
 import com.mycompany.myapp.security.AuthoritiesConstants;
+import com.mycompany.myapp.security.SecurityUtils;
 import com.mycompany.myapp.service.MemberImportService;
 import com.mycompany.myapp.service.MemberService;
 import com.mycompany.myapp.service.dto.MemberDTO;
@@ -98,6 +99,14 @@ public class MemberResource {
     public ResponseEntity<MemberDTO> createMember(@Valid @RequestBody MemberDTO dto) throws URISyntaxException {
         if (dto.getId() != null) {
             throw new BadRequestAlertException("Un nouveau membre ne peut pas déjà avoir un id", ENTITY_NAME, "idexists");
+        }
+        // Inscrire avec une formule encaisse un paiement : réservé à l'accueil (le commercial inscrit sans formule)
+        if (dto.getPlanId() != null && !SecurityUtils.hasCurrentUserAnyOfAuthorities(AuthoritiesConstants.ADMIN, AuthoritiesConstants.RECEPTION)) {
+            throw new BadRequestAlertException(
+                "L'encaissement se fait à l'accueil : inscrivez le membre sans formule, l'accueil encaissera.",
+                ENTITY_NAME,
+                "paymentnotallowed"
+            );
         }
         MemberDTO result = memberService.create(dto);
         return ResponseEntity.created(new URI("/api/members/" + result.getId()))

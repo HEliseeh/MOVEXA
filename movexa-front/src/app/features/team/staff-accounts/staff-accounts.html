@@ -1,6 +1,15 @@
 <section class="sa-section">
   <div class="sa-head">
-    <h2 class="card-title">Comptes de l’équipe</h2>
+    <div class="sa-filters">
+      <label class="visually-hidden" for="sa-q">Chercher une personne</label>
+      <input id="sa-q" class="input-line sa-search" type="search" placeholder="Chercher une personne" autocomplete="off"
+             [ngModel]="query()" (ngModelChange)="query.set($event)" />
+      <label class="visually-hidden" for="sa-role">Filtrer par rôle</label>
+      <select id="sa-role" class="input-line sa-select" [ngModel]="roleFilter()" (ngModelChange)="roleFilter.set($event)">
+        <option value="">Tous les rôles</option>
+        @for (r of roleChoices; track r) { <option [value]="r">{{ roleLabels[r] }}</option> }
+      </select>
+    </div>
     <div class="sa-actions">
       @if (inactiveCount()) {
         <label class="checkbox-label">
@@ -8,7 +17,7 @@
           Afficher les comptes désactivés ({{ inactiveCount() }})
         </label>
       }
-      <button type="button" class="btn btn-primary" (click)="edit()">Nouveau compte</button>
+      <button type="button" class="btn btn-primary" (click)="edit()">Ajouter une personne</button>
     </div>
   </div>
 
@@ -32,7 +41,7 @@
         </span>
       </div>
     } @empty {
-      @if (!loading()) { <p class="help">Aucun compte.</p> }
+      @if (!loading()) { <p class="help">{{ accounts().length ? 'Personne ne correspond à ces filtres.' : 'Aucun compte.' }}</p> }
     }
     @if (loading()) { <p class="help">Chargement…</p> }
   </div>
@@ -45,12 +54,13 @@
 <section class="sa-section">
   <h2 class="card-title">Ce que peut faire chaque rôle</h2>
   <div class="sa-perms">
-    <div class="grid-row grid-row--head"><span>Action</span><span>Réceptionniste</span><span>Gérant</span></div>
+    <div class="grid-row grid-row--head"><span>Action</span><span>Réceptionniste</span><span>Commercial</span><span>Gérant</span></div>
     @for (p of permissions; track p[0]) {
       <div class="grid-row">
         <span>{{ p[0] }}</span>
         <span [class.text-strong]="p[1] === 'Oui'">{{ p[1] }}</span>
-        <span class="text-strong">{{ p[2] }}</span>
+        <span [class.text-strong]="p[2] === 'Oui'">{{ p[2] }}</span>
+        <span class="text-strong">{{ p[3] }}</span>
       </div>
     }
   </div>
@@ -90,8 +100,9 @@
         <div class="field">
           <span class="sa-label" id="sa-role-label">Rôle *</span>
           <div class="choices" role="group" aria-labelledby="sa-role-label">
-            <button type="button" class="choice" [attr.aria-pressed]="d.role === 'RECEPTION'" [disabled]="isSelf()" (click)="patch({ role: 'RECEPTION' })">Réceptionniste</button>
-            <button type="button" class="choice" [attr.aria-pressed]="d.role === 'MANAGER'" [disabled]="isSelf()" (click)="patch({ role: 'MANAGER' })">Gérant</button>
+            @for (r of roleChoices; track r) {
+              <button type="button" class="choice" [attr.aria-pressed]="d.role === r" [disabled]="isSelf()" (click)="patch({ role: r })">{{ roleLabels[r] }}</button>
+            }
           </div>
           @if (isSelf()) { <span class="help">Vous ne pouvez pas changer votre propre rôle.</span> }
         </div>

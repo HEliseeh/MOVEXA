@@ -5,7 +5,7 @@ import { environment } from '../../../environments/environment';
 import { User } from './auth.models';
 
 /** Rôles acceptés par l'API métier (back1). Un compte sans l'un d'eux ne peut rien faire. */
-export const STAFF_ROLES = ['ROLE_ADMIN', 'ROLE_RECEPTION'];
+export const STAFF_ROLES = ['ROLE_ADMIN', 'ROLE_RECEPTION', 'ROLE_COMMERCIAL'];
 
 @Injectable({ providedIn: 'root' })
 export class CurrentUserStore {
@@ -18,6 +18,8 @@ export class CurrentUserStore {
   readonly isManager = computed(() => this.roles().includes('ROLE_ADMIN'));
   /** Personnel de la salle (gérant ou réceptionniste) : les seuls comptes qui ont accès à l'application */
   readonly isStaff = computed(() => this.hasAnyRole(STAFF_ROLES));
+  /** Travail d'accueil (pointage, encaissement, caisse) : gérant ou réceptionniste, pas le commercial */
+  readonly isDesk = computed(() => this.hasAnyRole(['ROLE_ADMIN', 'ROLE_RECEPTION']));
 
   hasAnyRole(required: string[]): boolean {
     return required.some(r => this.roles().includes(r));

@@ -21,7 +21,9 @@
         </span>
       </div>
       <div class="actions">
-        <button type="button" class="btn btn--dark" (click)="paying.set(true)">Renouveler</button>
+        @if (store.isDesk()) {
+          <button type="button" class="btn btn--dark" (click)="paying.set(true)">Renouveler</button>
+        }
         @if (m.phone) {
           <a class="btn btn--outline" [href]="reminderLink(m)" target="_blank" rel="noopener">Envoyer un rappel</a>
         }
@@ -73,7 +75,9 @@
                   {{ p.status === 'PAID' ? 'Payé' : p.status === 'PENDING' ? 'Lien envoyé, en attente' : 'Annulé' }}
                 </span>
                 @if (p.status === 'PAID') {
-                  <a class="line-link" [routerLink]="['/receipts', p.id]">Reçu {{ p.receiptNumber }}</a>
+                  @if (store.isDesk()) {
+                    <a class="line-link" [routerLink]="['/receipts', p.id]">Reçu {{ p.receiptNumber }}</a>
+                  }
                   @if (store.isManager()) {
                     <button type="button" class="text-btn" (click)="cancelling.set(p)">Annuler</button>
                   }

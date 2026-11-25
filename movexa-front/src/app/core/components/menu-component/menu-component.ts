@@ -2,6 +2,7 @@ import { Component, computed, inject, input, output } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { CurrentUserStore } from '@core/auth/current-user.store';
+import { NavCountsService } from '@core/navigation/nav-counts.service';
 import { MenuStep, ROLE_SHORT_LABELS } from '@shared/models/Navigation.model';
 
 // ---------------------------------------------------------------
@@ -19,6 +20,7 @@ import { MenuStep, ROLE_SHORT_LABELS } from '@shared/models/Navigation.model';
 })
 export class MenuComponent {
   private store = inject(CurrentUserStore);
+  private counts = inject(NavCountsService);
 
   item = input.required<MenuStep>();
   /** Profondeur dans l'arbre (0 = racine) */
@@ -43,6 +45,19 @@ export class MenuComponent {
     const id = this.activeId();
     const item = this.item();
     return id === item.id || !!item.children?.some(c => c.id === id);
+  });
+
+  /**
+   * Pastille : le compteur de l'entrée ; pour un groupe fermé, la somme de ses entrées accessibles
+   * (ouvert, chaque sous-entrée affiche la sienne). 0 = pas de pastille.
+   */
+  readonly badgeCount = computed(() => {
+    const item = this.item();
+    if (item.children?.length) {
+      if (this.open()) return 0;
+      return item.children.filter(c => this.can(c)).reduce((n, c) => n + this.counts.value(c.badge), 0);
+    }
+    return this.can(item) ? this.counts.value(item.badge) : 0;
   });
 
   /** « Réservé au profil gérant, accueil » */
