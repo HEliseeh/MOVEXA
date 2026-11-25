@@ -80,12 +80,38 @@ public class User extends AbstractAuditingEntity<Long> implements Serializable {
     @Column("reset_date")
     private Instant resetDate = null;
 
+    /** Téléphone de la personne (page Équipe et rôles) */
+    @Size(max = 20)
+    @Column("phone")
+    private String phone;
+
+    /** Dernière connexion réussie */
+    @JsonIgnore
+    @Column("last_login_at")
+    private Instant lastLoginAt;
+
     @JsonIgnore
     @org.springframework.data.annotation.Transient
     private Set<Authority> authorities = new HashSet<>();
 
     public Long getId() {
         return id;
+    }
+
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    public Instant getLastLoginAt() {
+        return lastLoginAt;
+    }
+
+    public void setLastLoginAt(Instant lastLoginAt) {
+        this.lastLoginAt = lastLoginAt;
     }
 
     public void setId(Long id) {

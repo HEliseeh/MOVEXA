@@ -1,5 +1,17 @@
-<div class="modal-backdrop" (keydown.escape)="close()">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pd-title">
+@if (inline()) {
+  <!-- Dans la page (écran Accès) : même contenu, sans voile ni fenêtre -->
+  <section class="pd-inline" aria-labelledby="pd-title" (keydown.escape)="close()">
+    <ng-container [ngTemplateOutlet]="content" />
+  </section>
+} @else {
+  <div class="modal-backdrop" (keydown.escape)="close()">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="pd-title">
+      <ng-container [ngTemplateOutlet]="content" />
+    </div>
+  </div>
+}
+
+<ng-template #content>
     <header class="modal-head">
       <div class="modal-head-text">
         <h2 id="pd-title" class="modal-title">{{ result() ? (result()!.status === 'PENDING' ? 'Lien de paiement créé' : 'Paiement enregistré') : title() }}</h2>
@@ -113,5 +125,4 @@
         <button type="button" class="btn btn-primary" [disabled]="saving() || !selected() || !plan()" (click)="submit()">{{ submitLabel() }}</button>
       </footer>
     }
-  </div>
-</div>
+</ng-template>

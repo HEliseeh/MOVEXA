@@ -12,7 +12,7 @@ html {
       primary:    mat.$orange-palette,
       theme-type: light,
     ),
-    typography: Lato,
+    typography: Outfit,
     density: -1,
   ));
 }
@@ -32,6 +32,6 @@ body {
   color-scheme: light;
   background-color: var(--color-bg, #efede8);
   color: var(--color-text, #1e2336);
-  font-family: var(--font-family-base, 'Lato', system-ui, sans-serif);
+  font-family: var(--font-family-base, 'Outfit', system-ui, sans-serif);
   margin: 0;
 }

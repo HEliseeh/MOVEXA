@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from '@core/auth/auth.guard';
 import { roleGuard } from '@core/auth/role.guard';
+import { homeGuard } from '@core/auth/home.guard';
 
 /**
  * Droits par page (le serveur applique les mêmes règles) :
@@ -9,7 +10,7 @@ import { roleGuard } from '@core/auth/role.guard';
  * - commercial : membres, prospects, relances (pas de caisse ni de pointage).
  * Sans le rôle, on est renvoyé vers « fallback ».
  */
-const MANAGER_ONLY = { roles: ['ROLE_ADMIN'], fallback: '/reception' };
+const MANAGER_ONLY = { roles: ['ROLE_ADMIN'], fallback: '/home' };
 /** Travail d'accueil : le commercial est renvoyé vers ses prospects */
 const DESK = { roles: ['ROLE_ADMIN', 'ROLE_RECEPTION'], fallback: '/prospects' };
 
@@ -54,10 +55,10 @@ export const routes: Routes = [
         loadComponent: () => import('@features/dashboard/dashboard').then(m => m.Dashboard),
       },
       {
-        path: 'reception',
-        canActivate: [roleGuard],
-        data: DESK,
-        loadComponent: () => import('@features/reception/reception').then(m => m.Reception),
+        // Page d'arrivée selon le rôle (l'ancien écran « Accueil » n'existe plus dans la maquette)
+        path: 'home',
+        canActivate: [homeGuard],
+        children: [],
       },
       {
         path: 'access',
@@ -133,7 +134,7 @@ export const routes: Routes = [
         // Gérant : gestion + commercial ; commercial : partie commerciale seulement
         path: 'stats',
         canActivate: [roleGuard],
-        data: { roles: ['ROLE_ADMIN', 'ROLE_COMMERCIAL'], fallback: '/reception' },
+        data: { roles: ['ROLE_ADMIN', 'ROLE_COMMERCIAL'], fallback: '/home' },
         loadComponent: () => import('@features/stats/stats').then(m => m.Stats),
       },
       {
@@ -147,8 +148,8 @@ export const routes: Routes = [
         loadComponent: () => import('@features/forbidden/forbidden').then(m => m.Forbidden),
       },
 
-      // Tout le monde arrive sur l'accueil (le tableau de bord reste dans le menu du gérant)
-      { path: '', redirectTo: 'reception', pathMatch: 'full' },
+      // Chacun arrive sur sa page : tableau de bord, accès et présence ou prospects
+      { path: '', redirectTo: 'home', pathMatch: 'full' },
     ],
   },
 

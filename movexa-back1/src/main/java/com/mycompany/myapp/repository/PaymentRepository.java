@@ -43,6 +43,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     long countByStatusAndCancelledAtBetween(PaymentStatus status, Instant from, Instant to);
 
+    long countByStatusAndMethod(PaymentStatus status, PaymentMethod method);
+
     /** Paiements encaissés pour ces membres depuis une date (pour savoir si une relance a abouti). */
     @Query(
         "select p from Payment p where p.member.id in :memberIds and p.status = com.mycompany.myapp.domain.enumeration.PaymentStatus.PAID " +

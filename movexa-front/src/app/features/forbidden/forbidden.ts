@@ -10,7 +10,7 @@ import { RouterLink } from '@angular/router';
       <section class="card forbidden">
         <h1 class="page-title">Accès réservé</h1>
         <p>Cette page ou cette action est réservée au gérant de la salle.</p>
-        <a routerLink="/reception" class="btn btn-primary">Revenir à l’accueil</a>
+        <a routerLink="/home" class="btn btn-primary">Revenir à ma page d’accueil</a>
       </section>
     </div>
   `,

@@ -150,9 +150,15 @@
         <!-- Droits d'accès : ceux de la formule, ou choisis un par un -->
         <section class="mf-section">
           <h3 class="mf-section-title">{{ step().access }}</h3>
-          <div class="choices" role="group" aria-label="Droits d’accès">
-            <button type="button" class="choice" [attr.aria-pressed]="accessMode() === 'plan'" (click)="setAccessMode('plan')">Droits de la formule</button>
-            <button type="button" class="choice" [attr.aria-pressed]="accessMode() === 'custom'" (click)="setAccessMode('custom')">Choisir les activités une par une</button>
+          <div class="mf-modes" role="radiogroup" aria-label="Droits d’accès">
+            <button type="button" class="mf-mode" role="radio" [attr.aria-checked]="accessMode() === 'plan'" (click)="setAccessMode('plan')">
+              <span class="mf-radio" aria-hidden="true"></span>
+              <span><span class="mf-mode-title">Selon la formule</span><span class="mf-mode-hint">Ce que comprend la formule choisie</span></span>
+            </button>
+            <button type="button" class="mf-mode" role="radio" [attr.aria-checked]="accessMode() === 'custom'" (click)="setAccessMode('custom')">
+              <span class="mf-radio" aria-hidden="true"></span>
+              <span><span class="mf-mode-title">Personnaliser</span><span class="mf-mode-hint">Choisir les activités une par une</span></span>
+            </button>
           </div>
           @if (accessMode() === 'plan') {
             @if (planRights(); as rights) {

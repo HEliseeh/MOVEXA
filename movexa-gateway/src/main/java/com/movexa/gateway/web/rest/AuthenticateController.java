@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
@@ -48,9 +49,25 @@ public class AuthenticateController {
 
     private final ReactiveAuthenticationManager authenticationManager;
 
-    public AuthenticateController(JwtEncoder jwtEncoder, ReactiveAuthenticationManager authenticationManager) {
+    private final DatabaseClient db;
+
+    public AuthenticateController(JwtEncoder jwtEncoder, ReactiveAuthenticationManager authenticationManager, DatabaseClient db) {
+        this.db = db;
         this.jwtEncoder = jwtEncoder;
         this.authenticationManager = authenticationManager;
+    }
+
+    /** Date de dernière connexion (page Équipe et rôles). Un échec ici ne bloque jamais la connexion. */
+    private Mono<Void> recordLogin(Authentication auth) {
+        return db
+            .sql("UPDATE jhi_user SET last_login_at = :now WHERE login = :login")
+            .bind("now", Instant.now())
+            .bind("login", auth.getName())
+            .then()
+            .onErrorResume(e -> {
+                LOG.warn("Dernière connexion non enregistrée : {}", e.getMessage());
+                return Mono.empty();
+            });
     }
 
     @PostMapping("/authenticate")
@@ -59,6 +76,7 @@ public class AuthenticateController {
             .flatMap(login ->
                 authenticationManager
                     .authenticate(new UsernamePasswordAuthenticationToken(login.getUsername(), login.getPassword()))
+                    .flatMap(auth -> recordLogin(auth).thenReturn(auth))
                     .flatMap(auth -> Mono.fromCallable(() -> this.createToken(auth, login.isRememberMe())))
             )
             .map(jwt -> {

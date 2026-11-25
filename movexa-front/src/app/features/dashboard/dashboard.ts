@@ -80,7 +80,7 @@ export class Dashboard implements OnInit {
   readonly headline = computed(() => {
     const e = this.entriesToday();
     const p = this.paymentsToday();
-    return `${e} ${e > 1 ? 'entrées' : 'entrée'} et ${p} ${p > 1 ? 'paiements' : 'paiement'} aujourd'hui.`;
+    return `${e} ${e > 1 ? 'entrées' : 'entrée'} et ${p} ${p > 1 ? 'abonnements payés' : 'abonnement payé'} aujourd'hui.`;
   });
 
   /** Objectifs du mois : renouvellements, encaissement et nouveaux membres (objectifs fixés dans Paramètres) */

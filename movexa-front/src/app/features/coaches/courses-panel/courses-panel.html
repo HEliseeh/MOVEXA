@@ -1,47 +1,42 @@
-<div class="cp-bar">
-  <p class="help cp-sub">{{ courses().length }} cours · {{ sessionsPerWeek() }} séances par semaine · <a routerLink="/planning">Voir le planning</a></p>
-  <button type="button" class="btn btn-primary" (click)="edit()">Nouveau cours</button>
-</div>
+<section class="cp-section" aria-labelledby="cp-heading">
+  <h2 id="cp-heading" class="cp-heading">Cours collectifs</h2>
 
-@if (loadError(); as e) {
-  <div class="alert alert--error cp-alert" role="alert">{{ e }} <button type="button" class="link-btn" (click)="load()">Réessayer</button></div>
-}
+  @if (loadError(); as e) {
+    <div class="alert alert--error" role="alert">{{ e }} <button type="button" class="link-btn" (click)="load()">Réessayer</button></div>
+  }
 
-<div class="cp-scroll">
-  <div class="cp-table">
-    <div class="grid-row grid-row--head">
-      <span>Cours</span><span>Coach</span><span>Durée</span><span>Places</span><span>Créneaux</span><span>Remplissage moyen</span><span></span>
-    </div>
+  <div class="cp-cards">
     @for (c of courses(); track c.id) {
-      <div class="grid-row" [class.cp-row--off]="!c.active">
-        <span class="cp-name">
-          <span class="cp-swatch" [style.background]="colors[c.color].bg" aria-hidden="true"></span>
-          <span>
-            <span class="text-strong">{{ c.name }}</span>
-            @if (c.description) { <span class="help cp-desc">{{ c.description }}</span> }
-            @if (!c.active) { <span class="help cp-desc">Plus proposé</span> }
+      <button type="button" class="cp-card" [class.cp-card--off]="!c.active" (click)="edit(c)" [attr.aria-label]="'Modifier le cours ' + c.name">
+        <span class="cp-card-head">
+          <span class="cp-icon" [style.background]="colors[c.color].bg" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" /></svg>
+          </span>
+          <span class="cp-card-title">
+            <span class="cp-name">{{ c.name }}</span>
+            <span class="cp-level">{{ c.active ? (c.description || 'Tous niveaux') : 'Plus proposé' }}</span>
           </span>
         </span>
-        <span>{{ c.coachName ?? '—' }}</span>
-        <span>{{ duration(c.durationMinutes) }}</span>
-        <span>{{ c.capacity }} places</span>
-        <span>{{ c.slots.length ? slotSummary(c.slots) : 'Aucun créneau' }}</span>
-        <span>
-          @if (c.avgFillPct !== null) {
-            <span class="cp-bar-fill" role="img" [attr.aria-label]="c.avgFillPct + ' %'"><span [style.width.%]="c.avgFillPct"></span></span>
-            {{ c.avgFillPct }} %
-          } @else {
-            <span class="help">{{ c.activityName ? 'Pas encore de séance' : 'Activité non choisie' }}</span>
-          }
+        <dl class="cp-dl">
+          <dt>Coach</dt><dd>{{ c.coachName ?? '—' }}</dd>
+          <dt>Durée</dt><dd>{{ duration(c.durationMinutes) }}</dd>
+          <dt>Places</dt><dd>{{ c.capacity }} places</dd>
+          <dt>Créneaux</dt><dd>{{ c.slots.length ? slotSummary(c.slots) : 'Aucun créneau' }}</dd>
+        </dl>
+        <span class="cp-fill">
+          <span class="cp-fill-row">
+            <span class="help">Remplissage moyen</span>
+            <b>{{ c.avgFillPct !== null ? c.avgFillPct + ' %' : '—' }}</b>
+          </span>
+          <span class="cp-bar" role="img" [attr.aria-label]="'Remplissage moyen ' + (c.avgFillPct ?? 0) + ' %'"><span [style.width.%]="c.avgFillPct ?? 0"></span></span>
         </span>
-        <span class="text-right"><button type="button" class="btn btn-outline btn-sm" (click)="edit(c)">Modifier</button></span>
-      </div>
+      </button>
     } @empty {
-      @if (!loading()) { <p class="empty">Aucun cours pour l’instant. Créez le premier avec « Nouveau cours ».</p> }
+      @if (!loading()) { <p class="empty cp-empty">Aucun cours pour l’instant. Créez le premier avec « Nouveau cours ».</p> }
     }
   </div>
-</div>
-<p class="help cp-note">Remplissage moyen = présents / places sur les 4 dernières semaines. Les présents sont les membres qui ont pointé l’activité du cours.</p>
+  <p class="help cp-note">Remplissage moyen = présents / places sur les 4 dernières semaines (membres qui ont pointé l’activité du cours).</p>
+</section>
 
 <!-- ===== POP-UP COURS ===== -->
 @if (draft(); as d) {

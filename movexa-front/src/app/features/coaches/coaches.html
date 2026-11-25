@@ -1,94 +1,58 @@
-<div class="page-sheet coaches-page">
-
-  <!-- ===== EN-TÊTE ===== -->
-  <header class="sheet-header sheet-header--tabs">
-    <div class="co-top">
-      <div class="co-left">
-        <h1 class="page-title">Cours et coachs</h1>
-        @if (tab() === 'coaches') {
-          <button type="button" class="btn btn-outline" [disabled]="!hasFilters()" (click)="resetFilters()">Réinitialiser les filtres</button>
-        }
+<div class="co-page">
+  <header class="co-header">
+    <div>
+      <h1 class="page-title">Cours et coachs</h1>
+      <p class="help co-sub-title">{{ courseCount() }} cours collectif{{ courseCount() > 1 ? 's' : '' }} · {{ activeCoaches().length }} coach{{ activeCoaches().length > 1 ? 's' : '' }}</p>
+    </div>
+    @if (store.isManager()) {
+      <div class="co-actions">
+        <button type="button" class="co-btn co-btn--light" (click)="edit()">Ajouter un coach</button>
+        <button type="button" class="co-btn" (click)="panel()?.edit()">Nouveau cours</button>
       </div>
-      @if (store.isManager() && tab() === 'coaches') {
-        <div class="page-actions">
-          <button type="button" class="btn btn-primary" (click)="edit()">Nouveau coach</button>
-        </div>
-      }
-    </div>
-    <div class="tabs" role="tablist" aria-label="Cours et coachs">
-      <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'courses'" (click)="tab.set('courses')">Cours collectifs</button>
-      <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'coaches'" (click)="tab.set('coaches')">Coachs ({{ coaches().length }})</button>
-    </div>
+    }
   </header>
 
-  @if (tab() === 'courses') {
-    <app-courses-panel class="co-courses" [coaches]="coaches()" />
-  } @else {
+  <app-courses-panel [coaches]="coaches()" (loaded)="courses.set($event)" />
 
-  <!-- ===== DISCIPLINES ENSEIGNÉES (clic = filtre) ===== -->
-  @if (disciplineSummary().length) {
-    <div class="co-disciplines" aria-label="Disciplines enseignées">
-      <span class="help">Disciplines :</span>
-      @for (d of disciplineSummary(); track d[0]) {
-        <button type="button" class="co-chip co-chip--btn" [class.co-chip--on]="disciplineFilter().includes(d[0])" (click)="filterOn(d[0])">
-          {{ d[0] }} <span class="co-chip-count">{{ d[1] }}</span>
-        </button>
-      }
+  <section class="co-section" aria-labelledby="co-heading">
+    <div class="co-section-head">
+      <h2 id="co-heading" class="co-heading">Coachs</h2>
+      <a class="co-link" routerLink="/planning">Voir le planning</a>
     </div>
-  }
 
-  <!-- ===== LISTE ===== -->
-  <div class="grid-scroll co-scroll">
-    <div class="co-grid">
-      <div class="grid-row grid-row--head co-head">
-        <input class="input-line input-line--filter" aria-label="Filtrer par nom" placeholder="Coach" [ngModel]="query()" (ngModelChange)="query.set($event)" />
-        <input class="input-line input-line--filter" aria-label="Filtrer par téléphone" placeholder="Téléphone" inputmode="numeric"
-               [ngModel]="phoneQuery()" (ngModelChange)="phoneQuery.set($event)" />
-        <app-multi-filter label="Disciplines" [options]="disciplineOptions()" [(selected)]="disciplineFilter" />
-        <span class="head-label text-right">Membres suivis</span>
-        <app-multi-filter label="Statut" [options]="statusOptions" [(selected)]="statusFilter" />
-        <span></span>
+    @for (k of coachRows(); track k.c.id) {
+      <div class="co-row" [class.co-row--off]="!k.c.active">
+        <span class="co-avatar" [style.background]="k.bg" aria-hidden="true">{{ initials(k.c.firstName, k.c.lastName ?? '') }}</span>
+        <span class="co-who">
+          <span class="co-name">{{ fullName(k.c) }}</span>
+          @if (k.c.phone) {
+            <a class="co-phone" [href]="whatsappLink(k.c.phone, 'Bonjour ' + k.c.firstName + ', ')" target="_blank" rel="noopener" [attr.aria-label]="'Écrire sur WhatsApp à ' + fullName(k.c)">{{ k.c.phone }}</a>
+          } @else {
+            <span class="co-phone">Pas de téléphone</span>
+          }
+        </span>
+        <span class="co-chips">
+          @for (x of k.courses; track x) { <span class="co-chip">{{ x }}</span> }
+          @empty {
+            @for (d of k.c.disciplines.slice(0, 3); track d) { <span class="co-chip co-chip--soft">{{ d }}</span> } @empty { <span class="help">Aucun cours</span> }
+          }
+        </span>
+        <span class="co-week"><b>{{ k.sessions }} cours</b><span class="help">cette semaine</span></span>
+        <span class="co-status"><span class="co-dot" [class.co-dot--off]="!k.c.active"></span>{{ k.c.active ? 'Disponible' : 'Inactif' }}</span>
+        @if (store.isManager()) {
+          <button type="button" class="co-more" [attr.aria-label]="'Modifier ' + fullName(k.c)" (click)="edit(k.c)">···</button>
+        } @else { <span></span> }
       </div>
-
-      @for (c of rows(); track c.id) {
-        <div class="grid-row co-row" [class.co-row--off]="!c.active">
-          <span class="co-name">
-            <span class="avatar" aria-hidden="true">{{ initials(c.firstName, c.lastName ?? '') }}</span>
-            <span>
-              <span class="text-strong">{{ fullName(c) }}</span>
-              @if (c.email) { <span class="help co-sub">{{ c.email }}</span> }
-            </span>
-          </span>
-          <span>
-            @if (c.phone) {
-              <a class="co-phone" [href]="whatsappLink(c.phone, 'Bonjour ' + c.firstName + ', ')" target="_blank" rel="noopener" [attr.aria-label]="'Écrire sur WhatsApp à ' + fullName(c)">{{ c.phone }}</a>
-            } @else { — }
-          </span>
-          <span class="co-chips">
-            @for (d of c.disciplines; track d) { <span class="co-chip">{{ d }}</span> } @empty { <span class="help">Non renseignées</span> }
-          </span>
-          <span class="text-right">{{ c.memberCount ?? 0 }}</span>
-          <span class="status"><span class="status-dot" [class.status-dot--success]="c.active" [class.status-dot--neutral]="!c.active"></span>{{ c.active ? 'Actif' : 'Inactif' }}</span>
-          <span class="text-right">
-            @if (store.isManager()) { <button type="button" class="btn btn-outline btn-sm" (click)="edit(c)">Modifier</button> }
-          </span>
-        </div>
-      } @empty {
-        @if (loading()) {
-          <p class="empty">Chargement des coachs…</p>
-        } @else if (loadError()) {
-          <p class="empty">{{ loadError() }} <button type="button" class="btn btn-outline" (click)="load()">Réessayer</button></p>
-        } @else if (coaches().length) {
-          <p class="empty">Aucun coach pour ces filtres.</p>
-        } @else {
-          <p class="empty">Aucun coach pour l’instant.{{ store.isManager() ? ' Ajoutez le premier avec « Nouveau coach ».' : '' }}</p>
-        }
+    } @empty {
+      @if (loading()) {
+        <p class="empty">Chargement des coachs…</p>
+      } @else if (loadError()) {
+        <p class="empty">{{ loadError() }} <button type="button" class="btn btn-outline" (click)="load()">Réessayer</button></p>
+      } @else {
+        <p class="empty">Aucun coach pour l’instant.{{ store.isManager() ? ' Ajoutez le premier avec « Ajouter un coach ».' : '' }}</p>
       }
-    </div>
-  </div>
-
-  <div class="card-foot">{{ rows().length }} coach(s) affiché(s) sur {{ coaches().length }}</div>
-  }
+    }
+  </section>
 </div>
 
 <!-- ===== POP-UP CRÉATION / MODIFICATION ===== -->

@@ -35,7 +35,6 @@ export const ROLE_SHORT_LABELS: Record<string, string> = {
 const G = [MANAGER];
 const GR = [MANAGER, RECEPTION];
 const GC = [MANAGER, COMMERCIAL];
-const home = 'M3 11l9-8 9 8M5 9.5V21h14V9.5M10 21v-6h4v6';
 
 const ICONS = {
   dash: 'M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z',
@@ -68,7 +67,6 @@ const ICONS = {
 export const MENU_ITEMS: MenuStep[] = [
   // ---- Pilotage et accueil ----
   { id: 'dashboard', label: 'Tableau de bord', iconPath: ICONS.dash, route: ['/dashboard'], roles: G },
-  { id: 'reception', label: 'Accueil', iconPath: home, route: ['/reception'], roles: GR },
 
   // ---- Clients, planning, encaissement ----
   {

@@ -52,7 +52,7 @@ export class Login {
             this.errorMessage.set('Ce compte n’a pas accès à MOVEXA. Demandez au gérant de vous attribuer un rôle.');
             return;
           }
-          this.router.navigate(['/reception']);
+          this.router.navigate(['/home']);
         },
         error: (err: HttpErrorResponse) => {
           this.loading.set(false);

@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, DestroyRef, inject, input, OnInit, output, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -28,7 +29,7 @@ import {
  */
 @Component({
   selector: 'app-pay-dialog',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, NgTemplateOutlet],
   templateUrl: './pay-dialog.html',
   styleUrl: './pay-dialog.css',
 })
@@ -39,6 +40,10 @@ export class PayDialog implements OnInit {
   /** Membre à encaisser ; null = choisir dans la pop-up */
   readonly member = input<MemberLite | null>(null);
   readonly title = input('Encaisser');
+  /** Affiché dans la page (carte de réponse de l'écran Accès) plutôt qu'en fenêtre */
+  readonly inline = input(false);
+  /** Moyen choisi à l'ouverture s'il est disponible (ex. lien de paiement depuis Abonnements) */
+  readonly defaultMethod = input<PaymentMethod | null>(null);
 
   /** Paiement enregistré (émis à la fermeture après succès) */
   readonly paid = output<Payment>();
@@ -127,7 +132,8 @@ export class PayDialog implements OnInit {
     this.selected.set(this.member());
     this.api.settings().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(s => {
       this.settings.set(s);
-      const first = this.methods().find(m => m.enabled);
+      const wanted = this.methods().find(m => m.enabled && m.id === this.defaultMethod());
+      const first = wanted ?? this.methods().find(m => m.enabled);
       if (first) this.method.set(first.id);
     });
     this.api.plans().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(plans => {

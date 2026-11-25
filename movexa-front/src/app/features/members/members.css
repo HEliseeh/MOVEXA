@@ -266,6 +266,7 @@ input:focus-visible {
   flex: 0 0 auto;
   border-radius: 50%;
   background: var(--ds-surface-soft);
+  color: var(--color-text);
   display: grid;
   place-items: center;
   font-size: 12px;

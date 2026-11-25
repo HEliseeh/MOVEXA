@@ -1,86 +1,105 @@
-<div class="page-sheet">
-  <header class="sheet-header pg-header">
-    <div>
+<div class="pg">
+  <header class="pg-header">
+    <div class="pg-title-row">
       <h1 class="page-title">Planning du club</h1>
-      <p class="help pg-week">{{ weekLabel() }}</p>
+      <div class="pg-nav" role="group" aria-label="Changer de semaine">
+        <button type="button" class="pg-arrow" aria-label="Semaine précédente" (click)="moveWeek(-1)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+        </button>
+        <button type="button" class="pg-week" title="Revenir à cette semaine" (click)="moveWeek(0)">{{ weekLabel() }}</button>
+        <button type="button" class="pg-arrow" aria-label="Semaine suivante" (click)="moveWeek(1)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+        </button>
+      </div>
     </div>
     <div class="pg-actions">
-      <div class="pg-nav" role="group" aria-label="Changer de semaine">
-        <button type="button" class="btn btn-outline btn-sm" aria-label="Semaine précédente" (click)="moveWeek(-1)">‹</button>
-        <button type="button" class="btn btn-outline btn-sm" (click)="moveWeek(0)">Cette semaine</button>
-        <button type="button" class="btn btn-outline btn-sm" aria-label="Semaine suivante" (click)="moveWeek(1)">›</button>
-      </div>
+      @if (filters().length > 1) {
+        <div class="pg-filters" role="group" aria-label="Filtrer par cours">
+          <button type="button" class="pg-chip" [attr.aria-pressed]="filter() === null" (click)="filter.set(null)">Tous</button>
+          @for (f of filters(); track f.id) {
+            <button type="button" class="pg-chip" [attr.aria-pressed]="filter() === f.id" (click)="filter.set(f.id)">
+              <span class="pg-chip-dot" [style.background]="colors[f.color].bg" aria-hidden="true"></span>{{ f.name }}
+            </button>
+          }
+        </div>
+      }
       @if (store.isManager()) {
-        <button type="button" class="btn btn-primary" (click)="addSlot()">Ajouter un créneau</button>
+        <button type="button" class="pg-add" (click)="addSlot()">Ajouter un créneau</button>
       }
     </div>
   </header>
 
   @if (error(); as e) {
-    <div class="alert alert--error pg-alert" role="alert">{{ e }} <button type="button" class="link-btn" (click)="load()">Réessayer</button></div>
+    <div class="alert alert--error" role="alert">{{ e }} <button type="button" class="link-btn" (click)="load()">Réessayer</button></div>
   }
 
-  <div class="pg-scroll">
-    <div class="pg-grid" aria-label="Séances de la semaine">
-      @for (d of days(); track d.iso) {
-        <section class="pg-day" [class.pg-day--today]="d.today" [attr.aria-label]="d.label">
-          <h2 class="pg-day-head">
-            {{ d.label }}
-            @if (d.today) { <span class="pg-today">aujourd’hui</span> }
-          </h2>
-          @for (s of d.sessions; track s.slotId) {
-            <button type="button" class="pg-session" [class.pg-session--on]="selected()?.slotId === s.slotId && selected()?.date === s.date"
-                    [class.pg-session--past]="isPast(s)" [style.background]="colors[s.color].bg"
-                    [attr.aria-pressed]="selected()?.slotId === s.slotId && selected()?.date === s.date" (click)="selected.set(s)">
-              <span class="pg-time">{{ s.startTime }} – {{ s.endTime }}</span>
-              <span class="pg-name">{{ s.courseName }}</span>
-              @if (s.coachName) { <span class="pg-meta">{{ s.coachName }}</span> }
-              @if (s.room) { <span class="pg-meta">{{ s.room }}</span> }
-              <span class="pg-fill">{{ fillText(s) }}</span>
-            </button>
-          } @empty {
-            @if (!loading()) {
-              @if (store.isManager()) {
-                <button type="button" class="pg-empty" (click)="addSlot(d.n)">+ Créneau</button>
-              } @else {
-                <span class="pg-empty pg-empty--text">—</span>
-              }
-            }
+  <div class="pg-body">
+    <section class="pg-board" [attr.aria-label]="'Semaine du ' + weekLabel()">
+      <div class="pg-grid">
+        <span></span>
+        @for (d of days(); track d.iso) {
+          <div class="pg-day-head">
+            <span class="pg-day-name">{{ d.name }}</span>
+            <span class="pg-day-num" [class.pg-day-num--today]="d.today">{{ d.num }}</span>
+          </div>
+        }
+        <div class="pg-hours" [style.height.px]="range().height" aria-hidden="true">
+          @for (h of hours(); track h.label) {
+            <span class="pg-hour" [style.top.px]="h.top">{{ h.label }}</span>
           }
-        </section>
-      }
-    </div>
-  </div>
-
-  <!-- ===== Séance choisie ===== -->
-  @if (selected(); as s) {
-    <section class="pg-detail" aria-labelledby="pg-detail-title">
-      <span class="pg-swatch" [style.background]="colors[s.color].bg" aria-hidden="true"></span>
-      <div class="pg-detail-text">
-        <h2 id="pg-detail-title" class="card-title">{{ s.courseName }}</h2>
-        <p class="help">
-          {{ dateLabel(s) }}, {{ s.startTime }} – {{ s.endTime }}
-          {{ s.coachName ? ' · ' + s.coachName : '' }}{{ s.room ? ' · ' + s.room : '' }}
-          · {{ fillText(s) }}
-        </p>
+        </div>
+        @for (d of days(); track d.iso) {
+          <div class="pg-col" [class.pg-col--today]="d.today" [style.height.px]="range().height" [attr.aria-label]="d.label">
+            @for (e of d.events; track e.s.slotId) {
+              <button type="button" class="pg-ev" [class.pg-ev--on]="isSelected(e.s)" [style.top.px]="e.top" [style.height.px]="e.height"
+                      [style.background]="colors[e.s.color].bg" [attr.aria-pressed]="isSelected(e.s)"
+                      [attr.aria-label]="e.s.courseName + ', ' + d.label + ', ' + e.s.startTime" (click)="selected.set(e.s)">
+                <span class="pg-ev-name">{{ e.s.courseName }}</span>
+                <span class="pg-ev-time">{{ e.s.startTime }} – {{ e.s.endTime }}</span>
+              </button>
+            }
+          </div>
+        }
       </div>
-      @if (store.isManager()) {
-        <button type="button" class="btn btn-outline btn-sm" (click)="editSelected()">Modifier le créneau</button>
-      }
-      <button type="button" class="link-btn" (click)="selected.set(null)">Fermer</button>
     </section>
-  }
 
-  <p class="help pg-summary">
-    @if (summary().count) {
-      {{ summary().count }} séance{{ summary().count > 1 ? 's' : '' }} cette semaine · {{ summary().places }} places
-      @if (summary().measured) { · {{ summary().present }} présents sur les {{ summary().measured }} séances passées }
-    } @else if (!loading()) {
-      Aucun cours programmé cette semaine.
-      @if (store.isManager()) { Créez vos cours dans <a routerLink="/coaches">Cours et coachs</a>, puis ajoutez des créneaux. }
-    }
-  </p>
-  <p class="help pg-summary">Pas de réservation : les présents sont les membres qui ont pointé l’activité du cours (jusqu’à 30 minutes avant le début).</p>
+    <aside class="pg-side">
+      <div class="pg-card">
+        @if (selected(); as s) {
+          <span class="pg-pill" [style.background]="colors[s.color].bg">{{ dateLabel(s) }}</span>
+          <h2 class="pg-sel-name">{{ s.courseName }}</h2>
+          <dl class="pg-dl">
+            <dt>Horaire</dt><dd>{{ s.startTime }} – {{ s.endTime }}</dd>
+            <dt>Coach</dt><dd>{{ s.coachName ?? '—' }}</dd>
+            <dt>Salle</dt><dd>{{ s.room ?? '—' }}</dd>
+          </dl>
+          <div class="pg-fill">
+            <span class="pg-fill-row"><span class="help">{{ s.present === null ? 'Places' : 'Présents' }}</span><b>{{ fillText(s) }}</b></span>
+            @if (fillPct() !== null) {
+              <span class="pg-bar" role="img" [attr.aria-label]="fillPct() + ' % de remplissage'"><span [style.width.%]="fillPct()"></span></span>
+            }
+          </div>
+          @if (store.isManager()) {
+            <button type="button" class="pg-edit" (click)="editSelected()">Modifier le créneau</button>
+          }
+        } @else {
+          <span class="pg-pill pg-pill--idle">{{ weekLabel() }}</span>
+          <h2 class="pg-sel-name">Choisissez une séance</h2>
+          <p class="help pg-none">Cliquez sur un cours de la grille pour voir son horaire, son coach, sa salle et les présents.</p>
+        }
+      </div>
+      <p class="help pg-summary">
+        @if (summary().count) {
+          {{ summary().count }} séance{{ summary().count > 1 ? 's' : '' }} cette semaine · {{ summary().places }} places
+          @if (summary().measured) { · {{ summary().present }} présents sur les {{ summary().measured }} séances passées }.
+        } @else if (!loading()) {
+          Aucun cours programmé cette semaine.
+          @if (store.isManager()) { Créez vos cours dans <a routerLink="/coaches">Cours et coachs</a>, puis ajoutez des créneaux. }
+        }
+      </p>
+      <p class="help pg-summary">Pas de réservation : les présents sont les membres qui ont pointé l’activité du cours (jusqu’à 30 minutes avant le début).</p>
+    </aside>
+  </div>
 </div>
 
 @if (slotDialog(); as d) {

@@ -1,3 +1,4 @@
+import { MobileTabbar } from '@core/components/mobile-tabbar/mobile-tabbar';
 import { OfflineBanner } from '@core/components/offline-banner/offline-banner';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -9,7 +10,7 @@ import { Toast } from '@shared/toast/toast';
 
 @Component({
   selector: 'app-connected-layout',
-  imports: [RouterOutlet, Sidebar, Topbar, Toast, OfflineBanner],
+  imports: [RouterOutlet, Sidebar, Topbar, Toast, OfflineBanner, MobileTabbar],
   templateUrl: './connected-layout.html',
   styleUrl:    './connected-layout.scss',
 })

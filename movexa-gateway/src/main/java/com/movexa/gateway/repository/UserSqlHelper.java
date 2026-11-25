@@ -22,6 +22,8 @@ public class UserSqlHelper {
         columns.add(Column.aliased("activation_key", table, columnPrefix + "_activation_key"));
         columns.add(Column.aliased("reset_key", table, columnPrefix + "_reset_key"));
         columns.add(Column.aliased("reset_date", table, columnPrefix + "_reset_date"));
+        columns.add(Column.aliased("phone", table, columnPrefix + "_phone"));
+        columns.add(Column.aliased("last_login_at", table, columnPrefix + "_last_login_at"));
         return columns;
     }
 }

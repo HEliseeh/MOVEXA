@@ -43,6 +43,15 @@
           </div>
         }
 
+        @case ('users') {
+          <section class="st-section">
+            <h2 class="card-title">Comptes de la salle</h2>
+            <p>Les comptes du personnel (gérant, accueil, commercial), leurs rôles et leurs mots de passe se gèrent dans la page Équipe et rôles.</p>
+            <p><a class="btn btn-outline" routerLink="/team">Ouvrir Équipe et rôles</a></p>
+            <p class="help">Chaque rôle voit tout le menu, mais les modules non autorisés sont grisés. Désactiver un compte bloque la connexion sans effacer son historique.</p>
+          </section>
+        }
+
         @case ('pay') {
           <section class="st-section">
             <h2 class="card-title">Moyens de paiement à l’accueil</h2>
@@ -68,18 +77,28 @@
             </div>
             <p class="help">L’agrégateur confirme chaque paiement au serveur (webhook signé). L’intégration exacte se fera avec la documentation de l’agrégateur choisi, une fois le compte ouvert.</p>
           </section>
+          <section class="st-section">
+            <h2 class="card-title">Mentions sur les reçus</h2>
+            <div class="field st-wide">
+              <label for="st-mentions">Texte imprimé en bas de chaque reçu</label>
+              <textarea id="st-mentions" class="textarea-box" rows="4" maxlength="300" placeholder="Raison sociale, IFU, adresse, conditions"
+                        [ngModel]="s.receiptFooter" (ngModelChange)="set('receiptFooter', $event)"></textarea>
+              <span class="help">Reçu simple ou facture officielle : à confirmer selon les obligations fiscales au Bénin. 300 caractères au plus.</span>
+            </div>
+          </section>
         }
 
         @case ('reminders') {
           <section class="st-section">
             <h2 class="card-title">Règles de relance des membres</h2>
             <div class="st-rules">
-              <div class="grid-row grid-row--head"><span>Règle</span><span>Quand</span><span>SMS</span><span>WhatsApp</span></div>
+              <div class="grid-row grid-row--head"><span>Règle</span><span>Quand</span><span>SMS</span><span>WhatsApp</span><span>Lien de paiement</span></div>
               @for (r of reminderRules; track r.label) {
                 <div class="grid-row">
                   <span class="text-strong">{{ r.label }}</span><span>{{ r.when }}</span>
                   <span><input type="checkbox" class="st-check" [attr.aria-label]="r.label + ' par SMS'" [ngModel]="value(r.sms)" (ngModelChange)="set(r.sms, $event)" /></span>
                   <span><input type="checkbox" class="st-check" [attr.aria-label]="r.label + ' par WhatsApp'" [ngModel]="value(r.wa)" (ngModelChange)="set(r.wa, $event)" /></span>
+                  <span class="help">{{ s.paymentLinkBaseUrl ? 'Inclus' : 'Quand le paiement par lien sera activé' }}</span>
                 </div>
               }
             </div>
