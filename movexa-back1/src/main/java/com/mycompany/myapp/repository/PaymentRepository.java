@@ -47,6 +47,12 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     )
     List<Payment> findPaidForMembersSince(@Param("memberIds") Collection<Long> memberIds, @Param("since") Instant since);
 
+    /** Encaissements depuis une date : [date d'encaissement, montant] (regroupés par mois en Java). */
+    @Query(
+        "select p.paidAt, p.amount from Payment p where p.status = com.mycompany.myapp.domain.enumeration.PaymentStatus.PAID and p.paidAt >= :since"
+    )
+    List<Object[]> findPaidAmountsSince(@Param("since") Instant since);
+
     @Query(value = "select nextval('receipt_seq')", nativeQuery = true)
     long nextReceiptNumber();
 

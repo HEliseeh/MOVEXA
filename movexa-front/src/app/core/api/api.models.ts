@@ -484,3 +484,48 @@ export interface PlanningWeek {
   weekStart: string;
   sessions: CourseSession[];
 }
+
+// ---- Statistiques (GET /api/stats/management, /api/stats/sales) ----
+export type StatsPeriod = 'MONTH' | 'QUARTER' | 'YEAR';
+
+export interface MonthStat {
+  /** AAAA-MM */
+  month: string;
+  revenue: number;
+  joined: number;
+  left: number;
+}
+
+export interface ManagementStats {
+  period: StatsPeriod;
+  from: string;
+  to: string;
+  revenue: number;
+  revenuePrevious: number;
+  activeMembers: number;
+  newMembers: number;
+  renewalsDue: number;
+  renewalsDone: number;
+  avgSpendPerMemberMonth: number | null;
+  months: MonthStat[];
+  /** [lundi = 0 … dimanche = 6][heure 0–23] : entrées des dernières semaines */
+  heatmap: number[][];
+  heatmapWeeks: number;
+  plans: { plan: string; members: number }[];
+}
+
+export interface SalesStats {
+  period: StatsPeriod;
+  from: string;
+  to: string;
+  prospects: number;
+  contacted: number;
+  converted: number;
+  avgDaysToConvert: number | null;
+  sources: { source: ProspectSource; prospects: number; converted: number }[];
+  sellers: { login: string; prospects: number; converted: number; onTimePct: number | null }[];
+  remindersSent: number;
+  remindersWhatsapp: number;
+  lapsedReminded: number;
+  lapsedCameBack: number;
+}

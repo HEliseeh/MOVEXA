@@ -5,6 +5,9 @@ import { environment } from '../../../environments/environment';
 import { silent } from '../loading/loading.interceptor';
 import {
   Activity,
+  ManagementStats,
+  SalesStats,
+  StatsPeriod,
   Course,
   CoursePayload,
   CourseSlot,
@@ -240,6 +243,15 @@ export class MovexaApi {
   saveSettings(s: GymSettings): Observable<GymSettings> {
     this.settings$ = undefined;
     return this.http.put<GymSettings>(`${this.api}/settings`, s);
+  }
+
+  // ---- Statistiques ----
+  managementStats(period: StatsPeriod): Observable<ManagementStats> {
+    return this.http.get<ManagementStats>(`${this.api}/stats/management`, { params: { period } });
+  }
+
+  salesStats(period: StatsPeriod): Observable<SalesStats> {
+    return this.http.get<SalesStats>(`${this.api}/stats/sales`, { params: { period } });
   }
 
   // ---- Comptes du personnel (gateway, réservé au gérant) ----

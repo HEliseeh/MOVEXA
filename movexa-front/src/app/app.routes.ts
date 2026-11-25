@@ -120,6 +120,13 @@ export const routes: Routes = [
         loadComponent: () => import('@features/payments/receipt/receipt').then(m => m.ReceiptPage),
       },
       {
+        // Gérant : gestion + commercial ; commercial : partie commerciale seulement
+        path: 'stats',
+        canActivate: [roleGuard],
+        data: { roles: ['ROLE_ADMIN', 'ROLE_COMMERCIAL'], fallback: '/reception' },
+        loadComponent: () => import('@features/stats/stats').then(m => m.Stats),
+      },
+      {
         path: 'settings',
         canActivate: [roleGuard],
         data: MANAGER_ONLY,
