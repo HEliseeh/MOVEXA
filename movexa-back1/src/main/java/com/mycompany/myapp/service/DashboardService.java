@@ -2,7 +2,6 @@ package com.mycompany.myapp.service;
 
 import com.mycompany.myapp.domain.CheckIn;
 import com.mycompany.myapp.domain.Member;
-import com.mycompany.myapp.domain.enumeration.CheckInResult;
 import com.mycompany.myapp.domain.enumeration.PaymentMethod;
 import com.mycompany.myapp.domain.enumeration.PaymentStatus;
 import com.mycompany.myapp.domain.enumeration.SubscriptionState;
@@ -111,7 +110,7 @@ public class DashboardService {
         LocalDate today = Dates.today();
         int threshold = views.threshold();
         List<CheckIn> checkIns = checkInRepository.findAllByCheckedAtBetweenOrderByCheckedAtDesc(Dates.startOf(today), Dates.endOf(today));
-        long refused = checkIns.stream().filter(c -> c.getResult() == CheckInResult.REFUSED).count();
+        long refused = checkIns.stream().filter(c -> c.getResult().isRefused()).count();
 
         // Venus aujourd'hui (même refusés) et dont l'abonnement est à renouveler : un par membre.
         Map<Long, MemberLiteDTO> toRenew = new LinkedHashMap<>();

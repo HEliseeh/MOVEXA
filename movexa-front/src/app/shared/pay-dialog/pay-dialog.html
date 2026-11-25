@@ -92,7 +92,11 @@
               <label for="pd-amount">Montant (FCFA)</label>
               <input id="pd-amount" class="input-line" type="number" min="0" step="500" inputmode="numeric"
                      [ngModel]="amount()" (ngModelChange)="amount.set($event)" />
-              @if (plan() && amount() !== plan()!.price) { <span class="help">Tarif spécial (prix habituel {{ fcfa(plan()!.price) }})</span> }
+              @if (plan() && amount() !== standardAmount()) {
+                <span class="help">Tarif spécial (montant habituel {{ fcfa(standardAmount()) }})</span>
+              } @else if (fee()) {
+                <span class="help">Dont {{ fcfa(fee()) }} de frais d’inscription (première formule du membre)</span>
+              }
             </div>
             @if (method() === 'MTN_MOMO' || method() === 'MOOV_MONEY') {
               <div class="field">

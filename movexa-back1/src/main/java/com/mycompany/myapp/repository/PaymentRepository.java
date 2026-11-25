@@ -49,4 +49,11 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
     @Query(value = "select nextval('receipt_seq')", nativeQuery = true)
     long nextReceiptNumber();
+
+    /** Ventes payées par formule depuis une date (« 31 ventes ce mois-ci ») : [planId, nombre] */
+    @Query(
+        "select p.plan.id, count(p) from Payment p where p.plan is not null " +
+        "and p.status = com.mycompany.myapp.domain.enumeration.PaymentStatus.PAID and p.createdAt >= :since group by p.plan.id"
+    )
+    List<Object[]> countPaidByPlanSince(@Param("since") Instant since);
 }

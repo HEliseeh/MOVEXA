@@ -1,0 +1,151 @@
+<div class="page-sheet">
+  <header class="sheet-header pl-header">
+    <div>
+      <h1 class="page-title">Formules et tarifs</h1>
+      <p class="help pl-sub">{{ onSale().length }} formule{{ onSale().length > 1 ? 's' : '' }} en vente · {{ subscriptionsInProgress() }} abonnements en cours</p>
+    </div>
+    <button type="button" class="btn btn-primary" (click)="edit()">Nouvelle formule</button>
+  </header>
+
+  @if (loadError(); as e) {
+    <div class="alert alert--error pl-alert" role="alert">{{ e }} <button type="button" class="link-btn" (click)="load()">Réessayer</button></div>
+  }
+
+  <div class="pl-body">
+    <!-- ===== Formules ===== -->
+    <section class="pl-cards" aria-label="Formules">
+      @for (p of plans(); track p.id) {
+        <button type="button" class="pl-card" [class.pl-card--on]="draft()?.id === p.id" [class.pl-card--off]="!p.active"
+                [attr.aria-pressed]="draft()?.id === p.id" (click)="edit(p)">
+          <span class="pl-card-head">
+            <span class="pl-name">{{ p.name }}</span>
+            @if (bestSellerId() === p.id) { <span class="pl-tag pl-tag--best">La plus vendue</span> }
+          </span>
+          <span class="pl-price">{{ fcfa(p.price) }}</span>
+          <span class="help">{{ durationLabel(p.durationDays) }}{{ p.registrationFee ? ' · + ' + fcfa(p.registrationFee) + ' d’inscription' : '' }}</span>
+          <span class="pl-acts">
+            @for (a of p.activityNames; track a) { <span class="pl-chip">{{ a }}</span> }
+          </span>
+          <span class="pl-card-foot">
+            <span class="help">{{ usage(p) }}</span>
+            <span class="status">
+              <span class="status-dot" [class.status-dot--success]="p.active"></span>{{ p.active ? 'En vente' : 'Retirée de la vente' }}
+            </span>
+          </span>
+        </button>
+      } @empty {
+        @if (!loading()) { <p class="help">Aucune formule. Créez la première avec « Nouvelle formule ».</p> }
+      }
+    </section>
+
+    <!-- ===== Édition ===== -->
+    @if (draft(); as d) {
+      <form class="pl-editor" (ngSubmit)="save()" aria-labelledby="pl-edit-title">
+        <h2 id="pl-edit-title" class="card-title">{{ d.id ? 'Modifier la formule' : 'Nouvelle formule' }}</h2>
+        @if (formError(); as e) { <div class="alert alert--error" role="alert">{{ e }}</div> }
+
+        <div class="field">
+          <label for="pl-name">Nom</label>
+          <input id="pl-name" name="name" class="input-line" maxlength="100" placeholder="Ex. Mensuel, Étudiant…"
+                 [ngModel]="d.name" (ngModelChange)="patch({ name: $event })" />
+        </div>
+
+        <div class="pl-pair">
+          <div class="field">
+            <label for="pl-price">Prix (FCFA)</label>
+            <input id="pl-price" name="price" class="input-line" type="number" min="0" step="500" inputmode="numeric"
+                   [ngModel]="d.price" (ngModelChange)="patch({ price: $event })" />
+          </div>
+          <div class="field">
+            <label for="pl-duration">Durée</label>
+            <select id="pl-duration" name="duration" class="input-line" [ngModel]="d.durationPreset" (ngModelChange)="pickDuration($event)">
+              @for (o of durations; track o[0]) { <option [value]="'' + o[0]">{{ o[1] }}</option> }
+              <option value="custom">Autre durée…</option>
+            </select>
+          </div>
+        </div>
+        @if (d.durationPreset === 'custom') {
+          <div class="field">
+            <label for="pl-days">Durée en jours</label>
+            <input id="pl-days" name="days" class="input-line" type="number" min="1" max="3660" inputmode="numeric"
+                   [ngModel]="d.durationDays" (ngModelChange)="patch({ durationDays: $event })" />
+          </div>
+        }
+
+        <fieldset class="pl-fieldset">
+          <legend>Inclus dans la formule</legend>
+          @for (a of activityChoices(); track a.id) {
+            <label class="checkbox-label">
+              <input type="checkbox" [name]="'act-' + a.id" [ngModel]="d.activityIds.includes(a.id)" (ngModelChange)="toggleActivity(a.id, $event)" />
+              {{ a.name }}{{ a.active ? '' : ' (retirée)' }}
+            </label>
+          } @empty {
+            <p class="help">Ajoutez d’abord les activités de la salle, plus bas.</p>
+          }
+          <span class="help">Vérifié à chaque pointage : une activité non cochée affiche « Refusé, activité non incluse ».</span>
+        </fieldset>
+
+        <div class="pl-pair">
+          <div class="field">
+            <label for="pl-fee">Frais d’inscription (FCFA)</label>
+            <input id="pl-fee" name="fee" class="input-line" type="number" min="0" step="500" inputmode="numeric" placeholder="0"
+                   [ngModel]="d.registrationFee" (ngModelChange)="patch({ registrationFee: $event })" />
+            <span class="help">Ajoutés au prix la première fois seulement.</span>
+          </div>
+          <div class="field pl-freeze">
+            <span class="pl-label" id="pl-freeze-label">Gel autorisé</span>
+            <button type="button" class="switch" [attr.aria-pressed]="d.freezeAllowed" aria-labelledby="pl-freeze-label"
+                    (click)="patch({ freezeAllowed: !d.freezeAllowed })">
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+            </button>
+            <span class="help">Le membre peut suspendre son abonnement (voyage, blessure).</span>
+          </div>
+        </div>
+
+        <div class="pl-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="saving()">{{ saving() ? 'Enregistrement…' : 'Enregistrer' }}</button>
+          @if (d.id) {
+            @if (d.active) {
+              <button type="button" class="btn btn-outline" [disabled]="saving()" (click)="save(false)">Retirer de la vente</button>
+            } @else {
+              <button type="button" class="btn btn-outline" [disabled]="saving()" (click)="save(true)">Remettre en vente</button>
+            }
+          }
+        </div>
+        <p class="help">Un nouveau prix ne s’applique qu’aux prochains achats et renouvellements, jamais aux abonnements en cours.</p>
+      </form>
+    }
+  </div>
+
+  <!-- ===== Activités de la salle ===== -->
+  <section class="pl-activities" aria-labelledby="pl-act-title">
+    <h2 id="pl-act-title" class="card-title">Activités de la salle</h2>
+    <p class="help">Elles sont cochées dans chaque formule et vérifiées au pointage. Une activité retirée n’est plus proposée mais reste dans l’historique.</p>
+    <ul class="pl-act-list">
+      @for (a of activities(); track a.id) {
+        <li class="pl-act" [class.pl-act--off]="!a.active">
+          @if (renaming()?.id === a.id) {
+            <label class="visually-hidden" [for]="'pl-rn-' + a.id">Nouveau nom de {{ a.name }}</label>
+            <input [id]="'pl-rn-' + a.id" class="input-line pl-act-input" maxlength="60" [ngModel]="renaming()!.name"
+                   (ngModelChange)="renaming.set({ id: a.id, name: $event })" (keydown.enter)="saveActivity(a, { name: renaming()!.name })" />
+            <button type="button" class="btn btn-primary btn-sm" (click)="saveActivity(a, { name: renaming()!.name })">OK</button>
+            <button type="button" class="link-btn" (click)="renaming.set(null)">Annuler</button>
+          } @else {
+            <span class="text-strong">{{ a.name }}</span>
+            <span class="help">{{ a.planCount ?? 0 }} formule{{ (a.planCount ?? 0) > 1 ? 's' : '' }}{{ a.active ? '' : ' · retirée' }}</span>
+            <span class="pl-act-btns">
+              <button type="button" class="link-btn" (click)="renaming.set({ id: a.id, name: a.name })">Renommer</button>
+              <button type="button" class="link-btn" (click)="saveActivity(a, { active: !a.active })">{{ a.active ? 'Retirer' : 'Remettre' }}</button>
+            </span>
+          }
+        </li>
+      }
+    </ul>
+    <form class="pl-act-add" (ngSubmit)="addActivity()">
+      <label class="visually-hidden" for="pl-new-act">Nouvelle activité</label>
+      <input id="pl-new-act" name="newActivity" class="input-line" maxlength="60" placeholder="Ex. Boxe, Piscine, Coaching privé…"
+             [ngModel]="newActivity()" (ngModelChange)="newActivity.set($event)" />
+      <button type="submit" class="btn btn-outline" [disabled]="!newActivity().trim()">Ajouter l’activité</button>
+    </form>
+  </section>
+</div>

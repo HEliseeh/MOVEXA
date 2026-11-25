@@ -7,7 +7,8 @@ export type PaymentMethod = 'CASH' | 'MTN_MOMO' | 'MOOV_MONEY' | 'PAYMENT_LINK';
 export type PaymentStatus = 'PENDING' | 'PAID' | 'CANCELLED';
 export type SubscriptionState = 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED' | 'NONE';
 export type CheckInMethod = 'QR' | 'SEARCH';
-export type CheckInResult = 'ALLOWED' | 'ALLOWED_EXPIRING' | 'REFUSED';
+/** REFUSED : abonnement expiré ou inexistant ; REFUSED_ACTIVITY : activité non incluse dans la formule */
+export type CheckInResult = 'ALLOWED' | 'ALLOWED_EXPIRING' | 'REFUSED' | 'REFUSED_ACTIVITY';
 export type ReminderChannel = 'SMS' | 'WHATSAPP';
 export type ReminderRule = 'BEFORE_7' | 'BEFORE_1' | 'AFTER_1' | 'AFTER_7';
 export type ProspectSource = 'WALK_IN' | 'REFERRAL' | 'WORD_OF_MOUTH' | 'SOCIAL' | 'FLYER' | 'OTHER';
@@ -17,12 +18,30 @@ export interface Plan {
   id: number;
   name: string;
   price: number;
+  /** 0 = valable le jour même (séance unique) */
   durationDays: number;
   active: boolean;
+  /** Membres dont c'est la formule en cours */
   memberCount: number | null;
+  /** Ajoutés au prix pour la première formule du membre (0 = aucun) */
+  registrationFee: number;
+  freezeAllowed: boolean;
+  activityIds: number[];
+  activityNames: string[];
+  /** Ventes payées depuis le 1er du mois */
+  salesThisMonth: number | null;
 }
 
-export type PlanPayload = Omit<Plan, 'id' | 'memberCount'> & { id?: number };
+export type PlanPayload = Omit<Plan, 'id' | 'memberCount' | 'activityNames' | 'salesThisMonth'> & { id?: number };
+
+/** Activité de la salle (musculation, cours collectifs, sauna…) */
+export interface Activity {
+  id: number;
+  name: string;
+  active: boolean;
+  /** Nombre de formules qui l'incluent */
+  planCount: number | null;
+}
 
 /** Coach de la salle et ses disciplines */
 export interface Coach {
@@ -64,6 +83,8 @@ export interface Payment {
   planId: number | null;
   planName: string | null;
   amount: number;
+  /** Part des frais d'inscription comprise dans le montant (première formule), sinon null */
+  registrationFee: number | null;
   method: PaymentMethod;
   status: PaymentStatus;
   receiptNumber: string | null;
@@ -123,6 +144,10 @@ export interface CheckIn {
   planName: string | null;
   endDate: string | null;
   daysLeft: number | null;
+  /** Activité pointée (null si non précisée) */
+  activityName: string | null;
+  /** Activités incluses dans la formule en cours (seulement dans la réponse à un pointage) */
+  includedActivities: string[];
 }
 
 export interface CheckInRequest {
@@ -131,6 +156,8 @@ export interface CheckInRequest {
   method: CheckInMethod;
   clientId?: string;
   checkedAt?: string;
+  /** Activité demandée ; absente = pas de vérification d'activité */
+  activityId?: number | null;
 }
 
 export interface Subscription {

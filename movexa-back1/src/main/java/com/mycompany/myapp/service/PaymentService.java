@@ -81,7 +81,15 @@ public class PaymentService {
         p.setMember(member);
         p.setPlan(plan);
         p.setPlanName(plan.getName());
-        p.setAmount(amount != null ? amount : plan.getPrice());
+        // Frais d'inscription : ajoutés au prix pour la toute première formule du membre (il n'a encore jamais eu d'abonnement)
+        long fee = plan.getRegistrationFee() == null ? 0L : plan.getRegistrationFee();
+        boolean firstPlan = member.getExpiryDate() == null && fee > 0;
+        if (amount != null) {
+            p.setAmount(amount);
+        } else {
+            p.setAmount(plan.getPrice() + (firstPlan ? fee : 0L));
+            p.setRegistrationFee(firstPlan ? fee : null);
+        }
         p.setMethod(method);
         p.setStartDate(startDate);
         p.setReference(StringUtils.hasText(reference) ? reference.trim() : null);
@@ -211,6 +219,7 @@ public class PaymentService {
             p.getPlan() != null ? p.getPlan().getId() : null,
             p.getPlanName(),
             p.getAmount(),
+            p.getRegistrationFee(),
             p.getMethod(),
             p.getStatus(),
             p.getReceiptNumber(),

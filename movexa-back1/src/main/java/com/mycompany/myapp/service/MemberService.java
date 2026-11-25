@@ -6,7 +6,6 @@ import com.mycompany.myapp.domain.Member;
 import com.mycompany.myapp.domain.Payment;
 import com.mycompany.myapp.domain.Plan;
 import com.mycompany.myapp.domain.User;
-import com.mycompany.myapp.domain.enumeration.CheckInResult;
 import com.mycompany.myapp.domain.enumeration.MemberStatus;
 import com.mycompany.myapp.domain.enumeration.UserStatus;
 import com.mycompany.myapp.repository.CheckInRepository;
@@ -144,7 +143,7 @@ public class MemberService {
                 List<CheckIn> checkIns = checkInRepository.findAllByMemberIdAndCheckedAtAfterOrderByCheckedAtDesc(id, since);
                 List<LocalDate> days = checkIns
                     .stream()
-                    .filter(c -> c.getResult() != CheckInResult.REFUSED)
+                    .filter(c -> !c.getResult().isRefused())
                     .map(c -> Dates.dayOf(c.getCheckedAt()))
                     .distinct()
                     .toList();

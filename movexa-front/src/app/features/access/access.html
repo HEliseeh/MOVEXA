@@ -41,6 +41,15 @@
   <div class="columns">
     <!-- ===== Identifier le membre + réponse ===== -->
     <section class="card identify">
+      @if (activities().length) {
+        <div class="pills" role="group" aria-label="Activité vérifiée au pointage">
+          @for (a of activities(); track a.id) {
+            <button type="button" class="pill" [attr.aria-pressed]="activityId() === a.id" (click)="pickActivity(a.id)">{{ a.name }}</button>
+          }
+          <button type="button" class="pill" [attr.aria-pressed]="activityId() === null" (click)="pickActivity(null)"
+                  title="Pointer sans vérifier l’activité">Sans préciser</button>
+        </div>
+      }
       <div class="segmented" role="tablist" aria-label="Mode de pointage">
         <button type="button" role="tab" [attr.aria-selected]="mode() === 'scan'" (click)="setMode('scan')">Scanner le QR</button>
         <button type="button" role="tab" [attr.aria-selected]="mode() === 'search'" (click)="setMode('search')">Chercher un membre</button>
@@ -119,6 +128,9 @@
                 Lien de paiement de {{ fcfa(p.amount) }} envoyé au {{ p.memberPhone }}. Pointe à nouveau dès la confirmation.
               } @else if (answer(); as a) {
                 {{ a.text }}
+                @if (a.rights?.length) {
+                  <br />Droits de la formule : {{ a.rights!.join(', ') }}.
+                }
               } @else {
                 Scanne un QR code ou cherche un membre : la réponse s’affiche ici.
               }
@@ -132,7 +144,7 @@
               <div class="answer-note">Enregistré sur l’appareil, envoi au retour du réseau.</div>
             }
             <div class="answer-actions">
-              @if (a.result !== 'ALLOWED') {
+              @if (a.result === 'REFUSED' || a.result === 'ALLOWED_EXPIRING') {
                 <button type="button" class="answer-btn" [disabled]="!offline.online()" (click)="openPay()">
                   {{ a.result === 'REFUSED' ? 'Encaisser' : 'Renouveler maintenant' }}
                 </button>
@@ -187,10 +199,10 @@
                 } @else {
                   <span class="tr-name">{{ r.name }}</span>
                 }
-                <span>{{ r.method === 'QR' ? 'QR' : 'Recherche' }}</span>
+                <span>{{ r.method === 'QR' ? 'QR' : 'Recherche' }}{{ r.activity ? ' · ' + r.activity : '' }}</span>
                 <span class="result">
                   <span class="dot" [class.dot--success]="r.result === 'ALLOWED'" [class.dot--warning]="r.result === 'ALLOWED_EXPIRING'"
-                        [class.dot--danger]="r.result === 'REFUSED'" aria-hidden="true"></span>
+                        [class.dot--danger]="isRefused(r.result)" aria-hidden="true"></span>
                   {{ resultLabels[r.result] }}
                 </span>
                 <span class="sync" [class.sync--pending]="r.pending">{{ r.pending ? 'En attente' : 'Synchronisé' }}</span>

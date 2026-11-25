@@ -6,6 +6,7 @@ import com.mycompany.myapp.domain.enumeration.SubscriptionState;
 import jakarta.validation.constraints.*;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 /** Objets échangés par l'API du pointage. */
 public final class CheckInDtos {
@@ -21,7 +22,9 @@ public final class CheckInDtos {
         @Size(max = 40) String qrToken,
         @NotNull CheckInMethod method,
         @Size(max = 40) String clientId,
-        Instant checkedAt
+        Instant checkedAt,
+        /** Activité demandée (musculation, cours collectifs…) ; null = pointage sans vérifier l'activité */
+        Long activityId
     ) {}
 
     public record CheckInDTO(
@@ -38,6 +41,10 @@ public final class CheckInDtos {
         SubscriptionState state,
         String planName,
         LocalDate endDate,
-        Long daysLeft
+        Long daysLeft,
+        /** Activité pointée (null si non précisée) */
+        String activityName,
+        /** Activités incluses dans la formule en cours : seulement dans la réponse à un pointage, sinon vide */
+        List<String> includedActivities
     ) {}
 }

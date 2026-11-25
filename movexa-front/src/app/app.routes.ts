@@ -88,8 +88,8 @@ export const routes: Routes = [
       {
         path: 'plans',
         canActivate: [roleGuard],
-        data: { ...MANAGER_ONLY, tab: 'plans' },
-        loadComponent: () => import('@features/subscriptions/subscriptions').then(m => m.Subscriptions),
+        data: MANAGER_ONLY,
+        loadComponent: () => import('@features/plans/plans').then(m => m.Plans),
       },
       {
         path: 'team',

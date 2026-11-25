@@ -4,6 +4,7 @@ import { Observable, shareReplay } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { silent } from '../loading/loading.interceptor';
 import {
+  Activity,
   CashClosure,
   CashDay,
   CheckIn,
@@ -61,6 +62,17 @@ export class MovexaApi {
   }
   updatePlan(id: number, p: PlanPayload): Observable<Plan> {
     return this.http.put<Plan>(`${this.api}/plans/${id}`, p);
+  }
+
+  // ---- Activités de la salle ----
+  activities(): Observable<Activity[]> {
+    return this.http.get<Activity[]>(`${this.api}/activities`);
+  }
+  createActivity(name: string): Observable<Activity> {
+    return this.http.post<Activity>(`${this.api}/activities`, { name });
+  }
+  updateActivity(a: Pick<Activity, 'id' | 'name' | 'active'>): Observable<Activity> {
+    return this.http.put<Activity>(`${this.api}/activities/${a.id}`, a);
   }
 
   // ---- Coachs ----

@@ -44,6 +44,10 @@ public class Payment implements Serializable {
     @Column(name = "amount", nullable = false)
     private Long amount;
 
+    /** Part des frais d'inscription comprise dans le montant (première formule du membre), sinon null. */
+    @Column(name = "registration_fee")
+    private Long registrationFee;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "method", length = 20, nullable = false)
     private PaymentMethod method;

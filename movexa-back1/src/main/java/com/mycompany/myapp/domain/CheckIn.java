@@ -42,4 +42,13 @@ public class CheckIn implements Serializable {
     /** Généré par le navigateur : un pointage hors ligne renvoyé deux fois n'est enregistré qu'une fois. */
     @Column(name = "client_id", length = 40, unique = true)
     private String clientId;
+
+    /** Activité pour laquelle le membre a pointé (facultatif : pointage sans préciser) */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "activity_id")
+    private Activity activity;
+
+    /** Nom de l'activité au moment du pointage (reste lisible si l'activité est renommée) */
+    @Column(name = "activity_name", length = 60)
+    private String activityName;
 }

@@ -21,14 +21,14 @@ public interface CheckInRepository extends JpaRepository<CheckIn, Long> {
     /** Nombre d'entrées autorisées par membre depuis une date : [memberId, nombre]. */
     @Query(
         "select c.member.id, count(c) from CheckIn c where c.checkedAt >= :since " +
-        "and c.result <> com.mycompany.myapp.domain.enumeration.CheckInResult.REFUSED group by c.member.id"
+        "and c.result not in (com.mycompany.myapp.domain.enumeration.CheckInResult.REFUSED, com.mycompany.myapp.domain.enumeration.CheckInResult.REFUSED_ACTIVITY) group by c.member.id"
     )
     List<Object[]> countAllowedByMemberSince(@Param("since") Instant since);
 
     /** Entrées autorisées depuis une date (le regroupement par jour se fait en Java, dans le fuseau du Bénin). */
     @Query(
         "select c.checkedAt from CheckIn c where c.checkedAt >= :since " +
-        "and c.result <> com.mycompany.myapp.domain.enumeration.CheckInResult.REFUSED"
+        "and c.result not in (com.mycompany.myapp.domain.enumeration.CheckInResult.REFUSED, com.mycompany.myapp.domain.enumeration.CheckInResult.REFUSED_ACTIVITY)"
     )
     List<Instant> findAllowedTimesSince(@Param("since") Instant since);
 }
