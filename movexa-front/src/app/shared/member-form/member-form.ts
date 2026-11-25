@@ -158,8 +158,8 @@ export class MemberForm implements OnInit {
   readonly step = computed(() => {
     const create = !this.isEdit() && this.store.isDesk();
     return create
-      ? { identity: '1 · Identité', plan: '2 · Formule', access: '3 · Activités', pay: `4 · Paiement de ${fcfa(this.firstAmount())}` }
-      : { identity: 'Identité', plan: 'Formule', access: 'Activités', pay: 'Paiement' };
+      ? { identity: '1 · Identité', plan: '2 · Formule', access: '3 · Activités autorisées', pay: `4 · Paiement de ${fcfa(this.firstAmount())}` }
+      : { identity: 'Identité', plan: 'Formule', access: 'Activités autorisées', pay: 'Paiement' };
   });
   readonly initials = computed(() => initials(this.values().firstName, this.values().lastName));
   readonly fullName = computed(() => `${this.values().firstName} ${this.values().lastName}`.trim());

@@ -3,7 +3,7 @@ import { inject } from '@angular/core';
 import { CurrentUserStore } from './current-user.store';
 
 /**
- * Vérifie les rôles déclarés dans la route : data: { roles: ['ROLE_ADMIN'], fallback: '/reception' }.
+ * Vérifie les rôles déclarés dans la route : data: { roles: ['ROLE_ADMIN'], fallback: '/home' }.
  * Sans le rôle : redirection vers « fallback » si elle est donnée, sinon vers /forbidden.
  * Rappel : ce n'est que du confort d'affichage, le vrai contrôle est fait par le backend.
  */

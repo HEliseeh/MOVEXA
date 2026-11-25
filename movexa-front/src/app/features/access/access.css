@@ -555,12 +555,12 @@ input:focus-visible {
 }
 
 .table {
-  min-width: 560px;
+  min-width: 600px;
 }
 
 .tr {
   display: grid;
-  grid-template-columns: 56px 1.5fr 90px 1.5fr 0.9fr;
+  grid-template-columns: 48px 1.4fr 1fr 64px 1.4fr 96px;
   gap: 12px;
   padding: 12px 20px;
   align-items: center;
@@ -654,3 +654,10 @@ a.tr-name:hover {
     flex-basis: 100%;
   }
 }
+
+/* Indicateur réseau (maquette mobile : « En ligne » / « Hors ligne · 3 ») */
+.page-head--net{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px}
+.net{display:inline-flex;align-items:center;gap:8px;min-height:32px;padding:0 12px;border-radius:999px;background:#dce7e5;color:#12262a;font-size:13px;font-weight:600}
+.net--off{background:#fdf0d2;color:#8a4b08}
+.net-dot{width:8px;height:8px;border-radius:50%;background:#3f8a2a}
+.net--off .net-dot{background:#c9831a}

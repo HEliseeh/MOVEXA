@@ -52,3 +52,16 @@
   flex-wrap: wrap;
   gap: var(--space-2);
 }
+
+/* Mode « dans la page » : intégré à la carte de réponse de l'écran Accès */
+.pd-inline {
+  margin-top: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.pd-inline .modal-head {
+  padding-top: 14px;
+}

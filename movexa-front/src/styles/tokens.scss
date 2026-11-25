@@ -66,28 +66,31 @@
   --palette-login-on-photo-soft: #c4d4d1;
 
   /* ---------- Rôles d'usage (à utiliser dans les composants) ---------- */
-  --color-bg: var(--palette-paper-200);          /* fond des pages */
-  --color-bg-deep: var(--palette-navy-950);      /* barre du haut */
+  /* Maquette « Flex Club · MVP » : fond gris clair, cartes blanches, encre vert très foncé */
+  --color-bg: var(--palette-ds-bg-page);         /* fond des pages */
+  --color-bg-deep: var(--palette-ds-hero);       /* zones sombres */
   --color-surface: var(--palette-white);         /* cartes, tableaux */
-  --color-surface-raised: var(--palette-paper-100);
-  --color-surface-stripe: var(--palette-paper-100); /* lignes paires */
-  --color-surface-selected: var(--palette-sand-100);
-  --color-border: var(--palette-line-300);
-  --color-border-soft: var(--palette-line-200);
-  --color-input-line: var(--palette-slate-300);
+  --color-surface-raised: var(--palette-ds-bg-page);
+  --color-surface-stripe: var(--palette-white);  /* la maquette n'alterne pas les lignes */
+  --color-surface-selected: #eef6f4;
+  --color-border: var(--palette-ds-line-soft);
+  --color-border-soft: #f1f3f2;
+  --color-input-line: var(--palette-ds-neutral-dot);
 
-  --color-text: var(--palette-navy-900);
-  --color-text-muted: var(--palette-slate-500);
-  --color-text-soft: var(--palette-slate-450);
+  --color-text: var(--palette-ds-ink);
+  --color-text-muted: var(--palette-ds-ink-muted);
+  --color-text-soft: var(--palette-ds-ink-soft);
 
-  --color-link: var(--palette-sand-800);
-  --color-link-hover: var(--palette-navy-900);
+  --color-link: var(--palette-ds-hero);
+  --color-link-hover: var(--palette-login-accent);
 
-  --color-primary: var(--palette-sand-500);
-  --color-primary-hover: #d3b28f;
-  --color-primary-active: var(--palette-sand-600);
-  --color-on-primary: var(--palette-navy-900);   /* texte sur un bouton sable */
-  --color-focus-ring: rgb(200 164 126 / 0.45);
+  --color-primary: var(--palette-ds-hero);
+  --color-primary-hover: #1c3437;
+  --color-primary-active: #0b1a1d;
+  --color-on-primary: var(--palette-white);
+  --color-focus-ring: rgb(44 122 123 / 0.35);
+  /* Contour des boutons secondaires et des pastilles de choix */
+  --color-control-border: #d5dbd9;
 
   /* Menu latéral clair (design system v2, composant Sidebar) */
   --color-nav-bg: var(--palette-ds-bg-page);
@@ -145,27 +148,27 @@
   --ds-radius-pill: 999px;
 
   /* Zones sombres : panneau de connexion, scanner */
-  --color-dark-panel: var(--palette-navy-900);
-  --color-dark-panel-raised: var(--palette-navy-700);
+  --color-dark-panel: var(--palette-ds-hero);
+  --color-dark-panel-raised: #1c3437;
   --color-on-dark: var(--palette-white);
   --color-on-dark-muted: var(--palette-slate-100);
 
   /* ---------- Couleurs sémantiques (pastilles de statut) ---------- */
-  --color-success: #2f8f5b;
-  --color-success-strong: #1f7a4a;
-  --color-success-bg: rgb(47 143 91 / 0.12);
-  --color-warning: #d9822b;
-  --color-warning-bg: rgb(217 130 43 / 0.12);
-  --color-danger: #c8443a;
-  --color-danger-strong: #b3352c;
-  --color-danger-bg: rgb(200 68 58 / 0.12);
-  --color-neutral: var(--palette-slate-300);
+  --color-success: var(--palette-ds-success-dot);
+  --color-success-strong: var(--palette-ds-success);
+  --color-success-bg: #e6f3d8;
+  --color-warning: var(--palette-ds-warning-dot);
+  --color-warning-bg: var(--palette-ds-warning-bg);
+  --color-danger: var(--palette-ds-danger-dot);
+  --color-danger-strong: var(--palette-ds-danger);
+  --color-danger-bg: var(--palette-ds-danger-bg);
+  --color-neutral: var(--palette-ds-neutral-dot);
   --color-info: #3a6ea5;
   --color-info-bg: rgb(58 110 165 / 0.12);
 
   /* Graphiques */
-  --color-chart-main: var(--palette-navy-900);
-  --color-chart-current: var(--palette-sand-600);
+  --color-chart-main: var(--palette-ds-hero);
+  --color-chart-current: var(--palette-login-accent);
   --color-chart-muted: var(--palette-slate-200);
   --color-chart-grid: var(--palette-line-200);
 
@@ -190,7 +193,7 @@
   --font-family-login: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   /* ---------- Typographie ---------- */
-  --font-family-base: 'Lato', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-family-base: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-family-mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
 
   --font-size-xs: 0.75rem;   /* 12px */
@@ -202,10 +205,10 @@
   --font-size-2xl: 1.875rem; /* 30px : KPI */
 
   --font-weight-regular: 400;
-  --font-weight-medium: 700;
-  --font-weight-semibold: 700;
-  --font-weight-bold: 700;
-  --font-weight-black: 900;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 600;
+  --font-weight-black: 700;
 
   --line-height-tight: 1.25;
   --line-height-base: 1.5;
@@ -220,15 +223,15 @@
   --space-8: 3rem;
 
   /* ---------- Formes ---------- */
-  --radius-sm: 4px;
-  --radius-md: 4px;
-  --radius-lg: 4px;
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
   --radius-full: 9999px;
 
   /* ---------- Ombres ---------- */
-  --shadow-sm: 0 1px 4px rgb(30 35 54 / 0.35);
-  --shadow-md: 0 2px 5px rgb(30 35 54 / 0.35);
-  --shadow-lg: 0 3px 8px rgb(30 35 54 / 0.5);
+  --shadow-sm: none;
+  --shadow-md: 0 8px 24px rgb(22 26 41 / 0.12);
+  --shadow-lg: 0 16px 40px rgb(22 26 41 / 0.25);
 
   /* ---------- Transitions et couches ---------- */
   --transition-fast: 150ms ease;

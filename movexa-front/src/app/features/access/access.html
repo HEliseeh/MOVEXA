@@ -1,7 +1,13 @@
 <div class="page">
-  <header class="page-head">
-    <h1 class="page-title">Contrôle d'accès et présence</h1>
-    <p class="page-sub">Pointage par QR code et passages d'aujourd'hui · {{ today }}</p>
+  <header class="page-head page-head--net">
+    <div>
+      <h1 class="page-title">Contrôle d'accès et présence</h1>
+      <p class="page-sub">Pointage par QR code et passages d'aujourd'hui · {{ today }}</p>
+    </div>
+    <span class="net" [class.net--off]="!offline.online()" role="status">
+      <span class="net-dot" aria-hidden="true"></span>
+      {{ offline.online() ? 'En ligne' : 'Hors ligne' }}{{ offline.pending().length ? ' · ' + offline.pending().length : '' }}
+    </span>
   </header>
 
   <!-- ===== Chiffres du jour ===== -->
@@ -159,6 +165,12 @@
             </div>
           }
         }
+
+        <!-- Encaissement dans la carte de réponse (maquette : formule et moyen de paiement sous la réponse) -->
+        @if (paying(); as m) {
+          <app-pay-dialog [inline]="true" [member]="m" [title]="m.state === 'EXPIRED' || m.state === 'NONE' ? 'Encaisser' : 'Renouveler l’abonnement'"
+                          (paid)="onPaid($event)" (closed)="paying.set(null)" />
+        }
       </div>
     </section>
 
@@ -195,7 +207,7 @@
         <div class="table-scroll">
           <div class="table">
             <div class="tr tr--head">
-              <span>Heure</span><span>Membre</span><span>Méthode</span><span>Résultat</span><span>Synchro</span>
+              <span>Heure</span><span>Membre</span><span>Activité</span><span>Méthode</span><span>Résultat</span><span>Synchro</span>
             </div>
             @for (r of filteredRows(); track r.key) {
               <div class="tr">
@@ -205,7 +217,8 @@
                 } @else {
                   <span class="tr-name">{{ r.name }}</span>
                 }
-                <span>{{ r.method === 'QR' ? 'QR' : 'Recherche' }}{{ r.activity ? ' · ' + r.activity : '' }}</span>
+                <span>{{ r.activity ?? '—' }}</span>
+                <span>{{ r.method === 'QR' ? 'QR' : 'Recherche' }}</span>
                 <span class="result">
                   <span class="dot" [class.dot--success]="r.result === 'ALLOWED'" [class.dot--warning]="r.result === 'ALLOWED_EXPIRING'"
                         [class.dot--danger]="isRefused(r.result)" aria-hidden="true"></span>
@@ -224,6 +237,4 @@
   </div>
 </div>
 
-@if (paying(); as m) {
-  <app-pay-dialog [member]="m" [title]="m.state === 'EXPIRED' || m.state === 'NONE' ? 'Encaisser' : 'Renouveler l’abonnement'" (paid)="onPaid($event)" (closed)="paying.set(null)" />
-}
+

@@ -116,7 +116,7 @@ export class Plans implements OnInit {
       return `${n} vente${n > 1 ? 's' : ''} ce mois-ci`;
     }
     const n = p.memberCount ?? 0;
-    return `${n} membre${n > 1 ? 's' : ''}`;
+    return `${n} abonnement${n > 1 ? 's' : ''} en cours`;
   }
 
   // ---- Édition d'une formule ----

@@ -8,7 +8,7 @@
       </span>
     </div>
     <div class="tabs" role="tablist" aria-label="Listes">
-      <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'week'" (click)="tab.set('week')">À renouveler ({{ expiring().length }})</button>
+      <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'week'" (click)="tab.set('week')">À renouveler bientôt ({{ expiring().length }})</button>
       <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'expired'" (click)="tab.set('expired')">Expirés ({{ expired().length }})</button>
       <button type="button" class="tab" role="tab" [attr.aria-selected]="tab() === 'all'" (click)="tab.set('all')">Tous</button>
     </div>
@@ -31,8 +31,14 @@
           <span class="status"><span class="status-dot" [class]="'status-dot status-dot--' + tones[m.state]"></span>{{ stateLabels[m.state] }}{{ when(m) ? ', ' + when(m) : '' }}</span>
           <span class="text-right">{{ fcfa(priceOf(m)) }}</span>
           <span class="sb-actions">
-            <button type="button" class="btn btn-primary btn-sm" (click)="renew(m)">Renouveler</button>
-            @if (m.state !== 'ACTIVE') { <a class="btn btn-outline btn-sm" [href]="reminder(m)" target="_blank" rel="noopener">Rappel WhatsApp</a> }
+            <button type="button" class="btn btn-sm sb-renew" (click)="renew(m)">Renouveler</button>
+            @if (m.state !== 'ACTIVE') {
+              @if (linkEnabled()) {
+                <button type="button" class="btn btn-outline btn-sm" (click)="sendLink(m)">Envoyer le lien</button>
+              } @else {
+                <a class="btn btn-outline btn-sm" [href]="reminder(m)" target="_blank" rel="noopener">Rappel WhatsApp</a>
+              }
+            }
           </span>
         </div>
       } @empty {
@@ -44,5 +50,5 @@
 </div>
 
 @if (paying(); as m) {
-  <app-pay-dialog [member]="m" title="Renouveler l’abonnement" (paid)="onPaid($event)" (closed)="paying.set(null)" />
+  <app-pay-dialog [member]="m" [defaultMethod]="payMethod()" [title]="payMethod() ? 'Envoyer le lien de paiement' : 'Renouveler l’abonnement'" (paid)="onPaid($event)" (closed)="paying.set(null)" />
 }

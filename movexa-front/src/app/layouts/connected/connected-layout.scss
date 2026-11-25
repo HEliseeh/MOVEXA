@@ -56,3 +56,10 @@
     }
   }
 }
+
+// ---- Téléphone : barre d'onglets en bas (Pointage, Membres, Encaisser) ----
+@media (max-width: 700px) {
+  .layout-content {
+    padding-bottom: 72px;
+  }
+}

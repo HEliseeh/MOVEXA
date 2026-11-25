@@ -9,6 +9,15 @@ import { COURSE_COLORS, WEEK_DAYS } from '@shared/course-colors';
 import { addDays, apiError, todayIso } from '@shared/format';
 import { SlotDialog } from '@shared/slot-dialog/slot-dialog';
 
+/** Hauteur d'une heure dans la grille (px) */
+const HOUR_PX = 40;
+
+/** « 18:30 » → 18,5 */
+function hoursOf(time: string): number {
+  const [h, m] = time.split(':').map(Number);
+  return h + (m || 0) / 60;
+}
+
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
 /** Lundi de la semaine qui contient ce jour (aaaa-mm-jj) */
@@ -44,6 +53,8 @@ export class Planning implements OnInit {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly selected = signal<CourseSession | null>(null);
+  /** Filtre par cours (null = tous) */
+  readonly filter = signal<number | null>(null);
 
   /** Pop-up créneau : null = fermée ; slot null = ajout */
   readonly slotDialog = signal<{ slot: CourseSlot | null; day: number } | null>(null);
@@ -57,21 +68,69 @@ export class Planning implements OnInit {
       : `${start.getDate()} ${MONTHS[start.getMonth()]} – ${end.getDate()} ${MONTHS[end.getMonth()]} ${end.getFullYear()}`;
   });
 
-  readonly days = computed(() =>
-    WEEK_DAYS.map(([n, , short], i) => {
+  /** Pastilles de filtre : les cours présents dans la semaine */
+  readonly filters = computed(() => {
+    const seen = new Map<number, { id: number; name: string; color: CourseSession['color'] }>();
+    for (const s of this.sessions()) if (!seen.has(s.courseId)) seen.set(s.courseId, { id: s.courseId, name: s.courseName, color: s.color });
+    return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+  });
+
+  private readonly visible = computed(() => {
+    const f = this.filter();
+    return f === null ? this.sessions() : this.sessions().filter(s => s.courseId === f);
+  });
+
+  /** Plage horaire affichée : 6 h – 22 h, élargie si une séance en sort */
+  readonly range = computed(() => {
+    let first = 6;
+    let last = 22;
+    for (const s of this.sessions()) {
+      first = Math.min(first, Math.floor(hoursOf(s.startTime)));
+      last = Math.max(last, Math.ceil(hoursOf(s.endTime) || 24));
+    }
+    return { first, last, height: (last - first) * HOUR_PX };
+  });
+
+  readonly hours = computed(() => {
+    const { first, last } = this.range();
+    return Array.from({ length: last - first }, (_, i) => ({ label: String(first + i).padStart(2, '0') + 'h', top: i * HOUR_PX }));
+  });
+
+  readonly days = computed(() => {
+    const first = this.range().first;
+    return WEEK_DAYS.map(([n, , short], i) => {
       const iso = addDays(this.weekStart(), i);
       return {
         n,
         iso,
+        name: short,
+        num: Number(iso.slice(8)),
         label: `${short} ${Number(iso.slice(8))}`,
         today: iso === this.today,
-        sessions: this.sessions().filter(s => s.date === iso),
+        events: this.visible()
+          .filter(s => s.date === iso)
+          .map(s => {
+            const start = hoursOf(s.startTime);
+            const end = Math.max(start + 0.5, hoursOf(s.endTime) || 24);
+            return { s, top: (start - first) * HOUR_PX + 2, height: (end - start) * HOUR_PX - 4 };
+          }),
       };
-    }),
-  );
+    });
+  });
+
+  isSelected(s: CourseSession): boolean {
+    const sel = this.selected();
+    return !!sel && sel.slotId === s.slotId && sel.date === s.date;
+  }
+
+  /** Remplissage de la séance choisie (présents / places), null si pas encore mesuré */
+  readonly fillPct = computed(() => {
+    const s = this.selected();
+    return s && s.present !== null ? Math.min(100, Math.round((100 * s.present) / s.capacity)) : null;
+  });
 
   readonly summary = computed(() => {
-    const list = this.sessions();
+    const list = this.visible();
     const measured = list.filter(s => s.present !== null);
     const places = list.reduce((n, s) => n + s.capacity, 0);
     const present = measured.reduce((n, s) => n + (s.present ?? 0), 0);

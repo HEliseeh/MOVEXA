@@ -21,6 +21,7 @@ interface AccountDraft {
   firstName: string;
   lastName: string;
   email: string;
+  phone: string;
   role: StaffRole;
   activated: boolean;
   password: string;
@@ -31,6 +32,7 @@ const EMPTY_DRAFT: AccountDraft = {
   firstName: '',
   lastName: '',
   email: '',
+  phone: '',
   role: 'RECEPTION',
   activated: true,
   password: '',
@@ -126,7 +128,7 @@ export class StaffAccounts implements OnInit {
     return this.accounts()
       .filter(a => this.showInactive() || a.activated)
       .filter(a => !role || a.role === role)
-      .filter(a => !q || `${this.fullName(a)} ${a.email ?? ''} ${a.login}`.toLowerCase().includes(q))
+      .filter(a => !q || `${this.fullName(a)} ${a.email ?? ''} ${a.login} ${a.phone ?? ''}`.toLowerCase().includes(q))
       .sort((a, b) => Number(b.activated) - Number(a.activated) || order[a.role] - order[b.role] || a.login.localeCompare(b.login));
   });
   readonly isSelf = computed(() => {
@@ -163,6 +165,19 @@ export class StaffAccounts implements OnInit {
 
   // ---- Création / modification ----
 
+  /** « Aujourd’hui à 08:12 », « 12/11/2026 », « Jamais » */
+  lastLogin(a: StaffAccount): string {
+    if (!a.lastLoginAt) return 'Jamais';
+    const d = new Date(a.lastLoginAt);
+    const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    const today = new Date();
+    if (d.toDateString() === today.toDateString()) return `Aujourd’hui à ${time}`;
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return `Hier à ${time}`;
+    return d.toLocaleDateString('fr-FR');
+  }
+
   edit(a?: StaffAccount): void {
     this.formError.set(null);
     this.draft.set(
@@ -172,6 +187,7 @@ export class StaffAccounts implements OnInit {
             firstName: a.firstName ?? '',
             lastName: a.lastName ?? '',
             email: a.email ?? '',
+            phone: a.phone ?? '',
             // Un compte sans rôle MOVEXA reçoit « Réceptionniste » par défaut s'il est modifié
             role: a.role === 'OTHER' ? 'RECEPTION' : a.role,
             activated: a.activated,
@@ -209,6 +225,7 @@ export class StaffAccounts implements OnInit {
       firstName: d.firstName.trim(),
       lastName: d.lastName.trim() || null,
       email: d.email.trim().toLowerCase(),
+      phone: d.phone.trim() || null,
       role: d.role,
     };
     const request = d.id

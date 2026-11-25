@@ -93,7 +93,7 @@
   justify-content: flex-end;
   gap: 10px;
   border-top: 1px solid var(--color-border);
-  background: var(--color-surface-raised);
+  background: var(--color-surface);
 }
 
 @media (max-width: 600px) {
@@ -111,8 +111,8 @@
 .choice {
   min-height: var(--touch-target);
   padding: 0 14px;
-  border: 1px solid var(--color-text);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-control-border);
+  border-radius: 18px;
   background: var(--color-surface);
   color: var(--color-text);
   font: inherit;

@@ -90,6 +90,7 @@ public class StaffService {
                 user.setFirstName(clean(req.firstName()));
                 user.setLastName(clean(req.lastName()));
                 user.setEmail(email);
+                user.setPhone(clean(req.phone()));
                 user.setLangKey(Constants.DEFAULT_LANGUAGE);
                 user.setActivated(true);
                 user.setPassword(hash);
@@ -123,6 +124,7 @@ public class StaffService {
                     user.setFirstName(clean(req.firstName()));
                     user.setLastName(clean(req.lastName()));
                     user.setEmail(email);
+                    user.setPhone(clean(req.phone()));
                     user.setActivated(req.activated());
                     user.getAuthorities().clear();
                     return userRepository.deleteUserAuthorities(user.getId()).then(withAuthorities(user, authorities));
@@ -211,10 +213,12 @@ public class StaffService {
             u.getFirstName(),
             u.getLastName(),
             u.getEmail(),
+            u.getPhone(),
             u.isActivated(),
             role,
             u.getCreatedDate(),
-            u.getLastModifiedDate()
+            u.getLastModifiedDate(),
+            u.getLastLoginAt()
         );
     }
 

@@ -41,6 +41,10 @@ export class Subscriptions implements OnInit {
   readonly plans = signal<Plan[]>([]);
   readonly threshold = signal(7);
   readonly paying = signal<MemberLite | null>(null);
+  /** Paiement par lien activé (Paramètres) : bouton « Envoyer le lien » */
+  readonly linkEnabled = signal(false);
+  /** Moyen proposé à l'ouverture de l'encaissement */
+  readonly payMethod = signal<'PAYMENT_LINK' | null>(null);
   private gymName = 'la salle';
 
   private readonly prices = computed(() => new Map(this.plans().map(p => [p.name, p.price])));
@@ -62,6 +66,7 @@ export class Subscriptions implements OnInit {
     if (tab) this.tab.set(tab);
     this.api.settings().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(s => {
       this.threshold.set(s.expiringSoonDays);
+      this.linkEnabled.set(!!s.paymentLinkBaseUrl);
       this.gymName = s.name ?? 'la salle';
     });
     this.load();
@@ -84,7 +89,14 @@ export class Subscriptions implements OnInit {
     return '';
   }
 
+  /** Lien de paiement envoyé au membre (il paie depuis son téléphone) */
+  sendLink(m: MemberDto): void {
+    this.renew(m);
+    this.payMethod.set('PAYMENT_LINK');
+  }
+
   renew(m: MemberDto): void {
+    this.payMethod.set(null);
     this.paying.set({ id: m.id, memberNumber: m.memberNumber, firstName: m.firstName, lastName: m.lastName, phone: m.phone, planName: m.plan, endDate: m.expiryDate, state: m.state, daysLeft: m.daysLeft, qrToken: m.qrToken });
   }
 

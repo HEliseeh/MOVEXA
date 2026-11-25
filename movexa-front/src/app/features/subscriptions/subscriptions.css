@@ -10,7 +10,7 @@
 }
 
 .sb-grid .grid-row {
-  grid-template-columns: 1.5fr 1fr 0.9fr 0.9fr 1.6fr 1fr 1.6fr;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr 1.3fr 1fr 270px;
 }
 
 .sb-total {
@@ -24,8 +24,18 @@
 
 .sb-actions {
   display: flex;
-  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px;
+}
+
+/* Maquette : « Renouveler » en pilule grise, l'autre action en contour */
+.sb-renew {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.sb-renew:hover:not(:disabled) {
+  background: #e7ecea;
 }
 
 .sb-note {

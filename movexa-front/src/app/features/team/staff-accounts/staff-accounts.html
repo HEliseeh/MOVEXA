@@ -27,13 +27,17 @@
 
   <div class="sa-list">
     <div class="grid-row grid-row--head">
-      <span>Nom</span><span>E-mail de connexion</span><span>Rôle</span><span>Statut</span><span></span>
+      <span>Personne</span><span>Rôle</span><span>Téléphone</span><span>Dernière connexion</span><span>Statut</span><span></span>
     </div>
     @for (a of visible(); track a.id) {
       <div class="grid-row" [class.sa-row--off]="!a.activated">
-        <span class="text-strong">{{ fullName(a) }} @if (isMe(a)) { <span class="sa-me">(vous)</span> }</span>
-        <span class="sa-login">{{ a.email || a.login }}</span>
+        <span class="sa-person">
+          <span class="text-strong">{{ fullName(a) }} @if (isMe(a)) { <span class="sa-me">(vous)</span> }</span>
+          <span class="sa-login">{{ a.email || a.login }}</span>
+        </span>
         <span [class.sa-norole]="a.role === 'OTHER'">{{ roleLabels[a.role] }}</span>
+        <span>{{ a.phone || '—' }}</span>
+        <span>{{ lastLogin(a) }}</span>
         <span class="status"><span class="status-dot" [class.status-dot--success]="a.activated"></span>{{ a.activated ? 'Actif' : 'Désactivé' }}</span>
         <span class="sa-row-actions">
           <button type="button" class="btn btn-outline btn-sm" (click)="edit(a)">Modifier</button>
@@ -95,6 +99,12 @@
           <input id="sa-email" name="email" class="input-line" type="email" [attr.maxlength]="d.id ? 254 : 50" autocomplete="off" autocapitalize="none" spellcheck="false"
                  placeholder="Ex. aicha@flexclub.bj" [ngModel]="d.email" (ngModelChange)="patch({ email: $event })" />
           <span class="help">Sert à se connecter et à recevoir le lien « Mot de passe oublié ». Utilisez une vraie adresse.</span>
+        </div>
+
+        <div class="field">
+          <label for="sa-phone">Téléphone</label>
+          <input id="sa-phone" name="phone" class="input-line" type="tel" maxlength="20" autocomplete="off" inputmode="tel"
+                 placeholder="Ex. 97 00 00 00" [ngModel]="d.phone" (ngModelChange)="patch({ phone: $event })" />
         </div>
 
         <div class="field">

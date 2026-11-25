@@ -7,7 +7,7 @@ import { MovexaApi } from '@core/api/movexa-api.service';
 import { CurrentUserStore } from '@core/auth/current-user.store';
 import { ToastService } from '@core/notifications/toast.service';
 import { CancelPayment } from '@shared/cancel-payment/cancel-payment';
-import { apiError, dayHour, fcfa, frDate, hour, METHOD_LABELS, todayIso, whatsappLink } from '@shared/format';
+import { apiError, dayHour, fcfa, frDate, hour, METHOD_LABELS, shortDate, todayIso, whatsappLink } from '@shared/format';
 import { PayDialog } from '@shared/pay-dialog/pay-dialog';
 
 type Tab = 'pays' | 'links' | 'close';
@@ -31,6 +31,7 @@ export class Payments implements OnInit {
 
   readonly fcfa = fcfa;
   readonly hour = hour;
+  readonly shortDate = shortDate;
   readonly dayHour = dayHour;
   readonly frDate = frDate;
   readonly methodLabels = METHOD_LABELS;

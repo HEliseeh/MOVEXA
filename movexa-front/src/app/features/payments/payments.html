@@ -2,13 +2,13 @@
   <header class="sheet-header sheet-header--tabs">
     <div class="pm-top">
       <div>
-        <h1 class="page-title">Encaissements et caisse</h1>
+        <h1 class="page-title">Encaissements</h1>
         <p class="page-subtitle">Total encaissé le {{ frDate(date()) }} : <strong>{{ fcfa(dayTotal()) }}</strong></p>
       </div>
       <div class="page-actions">
         <label class="sr-only" for="pm-date">Jour affiché</label>
         <input id="pm-date" class="input-line pm-date" type="date" [max]="today" [ngModel]="date()" (ngModelChange)="changeDate($event)" />
-        <button type="button" class="btn btn-primary" (click)="paying.set(true)">Nouvel encaissement</button>
+        <button type="button" class="btn btn-primary" (click)="paying.set(true)">Encaisser un paiement</button>
       </div>
     </div>
     <div class="tabs" role="tablist" aria-label="Vues">
@@ -22,26 +22,24 @@
   @if (tab() === 'pays') {
     <div class="grid-scroll">
       <div class="pm-grid">
-        <div class="grid-row grid-row--head"><span>Heure</span><span>Membre</span><span>Objet</span><span>Moyen</span><span class="text-right">Montant</span><span>Saisi par</span><span>Reçu / réf.</span><span>Statut</span><span></span></div>
+        <div class="grid-row grid-row--head"><span>Date</span><span>Membre</span><span>Objet</span><span>Moyen</span><span class="text-right pm-total"><span class="pm-total-label">Total du jour</span>{{ fcfa(dayTotal()) }}</span><span>Saisi par</span><span>Référence</span><span>Statut</span><span></span><span></span></div>
         @for (p of payments(); track p.id) {
           <div class="grid-row" [class.pm-cancelled]="p.status === 'CANCELLED'">
-            <span>{{ hour(p.createdAt) }}</span>
+            <span class="pm-date">{{ shortDate(p.createdAt) }} {{ hour(p.createdAt) }}</span>
             <a class="text-strong pm-name" [routerLink]="['/members', p.memberId]">{{ p.memberName }}</a>
             <span>{{ p.planName }}</span>
             <span>{{ methodLabels[p.method] }}</span>
             <span class="text-right pm-amount">{{ fcfa(p.amount) }}</span>
             <span>{{ p.createdBy }}</span>
-            <span>
-              @if (p.receiptNumber) { <a [routerLink]="['/receipts', p.id]">{{ p.receiptNumber }}</a> }
-              @if (p.reference) { <span class="help"> {{ p.reference }}</span> }
-            </span>
+            <span class="pm-ref">{{ p.reference || p.receiptNumber || '—' }}</span>
             <span class="status" [title]="p.cancelReason ? 'Annulé par ' + p.cancelledBy + ' : ' + p.cancelReason : ''">
               <span class="status-dot" [class.status-dot--success]="p.status === 'PAID'" [class.status-dot--warning]="p.status === 'PENDING'"></span>
               {{ p.status === 'PAID' ? 'Payé' : p.status === 'PENDING' ? 'Lien en attente' : 'Annulé : ' + p.cancelReason }}
             </span>
+            <span>@if (p.receiptNumber && p.status !== 'PENDING') { <a class="pm-link" [routerLink]="['/receipts', p.id]">Reçu</a> }</span>
             <span>
               @if (store.isManager() && p.status !== 'CANCELLED') {
-                <button type="button" class="link-btn" (click)="cancelling.set(p)">Annuler</button>
+                <button type="button" class="link-btn pm-link" (click)="cancelling.set(p)">Annuler</button>
               }
             </span>
           </div>

@@ -1,12 +1,13 @@
 import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GymSettings } from '@core/api/api.models';
 import { MovexaApi } from '@core/api/movexa-api.service';
 import { ToastService } from '@core/notifications/toast.service';
 import { apiError } from '@shared/format';
 
-type Tab = 'gym' | 'pay' | 'reminders' | 'prospects';
+type Tab = 'gym' | 'users' | 'pay' | 'reminders' | 'prospects';
 type BoolKey = { [K in keyof GymSettings]: GymSettings[K] extends boolean ? K : never }[keyof GymSettings];
 type NumKey = { [K in keyof GymSettings]: GymSettings[K] extends number ? K : never }[keyof GymSettings];
 
@@ -16,7 +17,7 @@ type NumKey = { [K in keyof GymSettings]: GymSettings[K] extends number ? K : ne
  */
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   templateUrl: './settings.html',
   styleUrl: './settings.css',
 })
@@ -24,9 +25,11 @@ export class Settings implements OnInit {
   private readonly api = inject(MovexaApi);
   private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute);
 
   readonly tabs: [Tab, string][] = [
     ['gym', 'Ma salle'],
+    ['users', 'Utilisateurs et rôles'],
     ['pay', 'Paiements et reçus'],
     ['reminders', 'Relances'],
     ['prospects', 'Prospects'],
@@ -39,7 +42,6 @@ export class Settings implements OnInit {
     { key: 'moovNumber', label: 'Numéro Moov Money de la salle', type: 'tel', placeholder: '' },
     { key: 'address', label: 'Adresse', type: 'text', placeholder: 'Quartier, ville' },
     { key: 'openingHours', label: 'Horaires d’ouverture', type: 'text', placeholder: '06 h 00 à 22 h 00' },
-    { key: 'receiptFooter', label: 'Mention en bas des reçus', type: 'text', placeholder: 'Merci de votre confiance.' },
   ];
 
   readonly methodToggles: { key: BoolKey; label: string; detail: string }[] = [
@@ -79,6 +81,10 @@ export class Settings implements OnInit {
   readonly saved = signal('');
 
   ngOnInit(): void {
+    // Onglet demandé dans l'adresse (?tab=reminders, depuis la page Relances)
+    const wanted = this.route.snapshot.queryParamMap.get('tab');
+    const found = this.tabs.find(([id]) => id === wanted);
+    if (found) this.tab.set(found[0]);
     this.api.settings().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(s => this.settings.set({ ...s }));
   }
 

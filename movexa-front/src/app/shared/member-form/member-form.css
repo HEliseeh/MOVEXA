@@ -134,3 +134,54 @@
   gap: 6px var(--space-4);
   margin: var(--space-3, 12px) 0 6px;
 }
+
+/* Droits d'accès : deux cartes radio (maquette « Pop-up : nouveau membre ») */
+.mf-modes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.mf-mode {
+  min-height: 56px;
+  padding: 8px 14px;
+  border: 1px solid var(--color-control-border);
+  border-radius: 18px;
+  background: var(--color-surface);
+  color: #12262a;
+  font: inherit;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.mf-mode[aria-checked='true'] {
+  border: 2px solid #12262a;
+  padding: 7px 13px;
+}
+
+.mf-radio {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border: 2px solid #8a9794;
+  border-radius: 50%;
+}
+
+.mf-mode[aria-checked='true'] .mf-radio {
+  border: 6px solid #12262a;
+}
+
+.mf-mode-title {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.mf-mode-hint {
+  display: block;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}

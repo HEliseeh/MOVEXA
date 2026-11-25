@@ -1,7 +1,6 @@
-import { Component, computed, DestroyRef, inject, input, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, input, OnInit, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { Activity, Coach, Course, CourseColor, CoursePayload, CourseSlot } from '@core/api/api.models';
 import { MovexaApi } from '@core/api/movexa-api.service';
 import { ToastService } from '@core/notifications/toast.service';
@@ -28,7 +27,7 @@ interface CourseDraft {
  */
 @Component({
   selector: 'app-courses-panel',
-  imports: [FormsModule, RouterLink, SlotDialog],
+  imports: [FormsModule, SlotDialog],
   templateUrl: './courses-panel.html',
   styleUrl: './courses-panel.css',
 })
@@ -39,6 +38,8 @@ export class CoursesPanel implements OnInit {
 
   /** Coachs de la salle (chargés par la page) */
   readonly coaches = input<Coach[]>([]);
+  /** Liste des cours à chaque chargement (la page en tire les cours de chaque coach) */
+  readonly loaded = output<Course[]>();
 
   readonly colors = COURSE_COLORS;
   readonly colorKeys = COLOR_KEYS;
@@ -72,6 +73,7 @@ export class CoursesPanel implements OnInit {
       .subscribe({
         next: list => {
           this.courses.set(list);
+          this.loaded.emit(list);
           this.loading.set(false);
           this.loadError.set(null);
         },

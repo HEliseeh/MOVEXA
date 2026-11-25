@@ -1,5 +1,7 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { AuthService } from '@core/auth/auth.service';
+import { NavCountsService } from '@core/navigation/nav-counts.service';
 import { CurrentUserStore } from '@core/auth/current-user.store';
 import { OfflineService } from '@core/offline/offline.service';
 import { initials } from '@shared/format';
@@ -15,13 +17,14 @@ const ROLE_INFO: [string, string, 'peach' | 'lavender' | 'lime' | 'mint'][] = [
 ];
 
 // ---------------------------------------------------------------
-// Topbar — barre du haut claire (design system v2) : recherche sans
-// cadre, état hors ligne, messages, notifications, avatar.
-// Le logo et la déconnexion sont dans le menu latéral.
+// Topbar — barre du haut (maquette « Composant : barre du haut ») :
+// recherche, enveloppe (relances à envoyer aujourd'hui), cloche (ce qui
+// attend une action), avatar (mot de passe, déconnexion).
+// Le logo et la déconnexion sont aussi dans le menu latéral.
 // ---------------------------------------------------------------
 @Component({
   selector: 'app-topbar',
-  imports: [ChangePassword],
+  imports: [ChangePassword, RouterLink],
   templateUrl: './topbar.html',
   styleUrl: './topbar.css',
 })
@@ -40,8 +43,51 @@ export class Topbar {
 
   readonly user = this.store.user;
 
+  private readonly auth = inject(AuthService);
+  private readonly counts = inject(NavCountsService);
+
   /** Pop-up « Changer mon mot de passe » */
   readonly changingPassword = signal(false);
+  /** Panneau ouvert : notifications ou menu du compte */
+  readonly panel = signal<'notifications' | 'account' | null>(null);
+
+  /** Enveloppe : relances de membres à envoyer aujourd'hui */
+  readonly messages = computed(() => this.counts.all()?.remindersToSend ?? 0);
+
+  /** Cloche : ce qui attend une action, selon le rôle */
+  readonly notifications = computed(() => {
+    const c = this.counts.all();
+    if (!c) return [];
+    const desk = this.store.isDesk();
+    const plural = (n: number, one: string, many: string) => `${n} ${n > 1 ? many : one}`;
+    const items: { n: number; text: string; route: string; query?: Record<string, string> }[] = [
+      { n: c.prospectsToday, text: plural(c.prospectsToday, 'prospect à relancer aujourd’hui', 'prospects à relancer aujourd’hui'), route: '/prospects' },
+      { n: c.remindersToSend ?? 0, text: plural(c.remindersToSend ?? 0, 'relance de membre à envoyer', 'relances de membres à envoyer'), route: '/reminders' },
+    ];
+    if (desk) {
+      items.push(
+        { n: c.expiringSoon, text: plural(c.expiringSoon, 'abonnement finit bientôt', 'abonnements finissent bientôt'), route: '/subscriptions' },
+        { n: c.pendingLinks ?? 0, text: plural(c.pendingLinks ?? 0, 'lien de paiement en attente', 'liens de paiement en attente'), route: '/payments', query: { tab: 'links' } },
+      );
+    }
+    return items.filter(i => i.n > 0);
+  });
+
+  toggle(p: 'notifications' | 'account'): void {
+    this.panel.update(current => (current === p ? null : p));
+  }
+
+  changePassword(): void {
+    this.panel.set(null);
+    this.changingPassword.set(true);
+  }
+
+  logout(): void {
+    this.panel.set(null);
+    this.auth.logout();
+    this.store.clear();
+    this.router.navigate(['/login']);
+  }
 
   private readonly role = computed(() => {
     const roles = this.store.roles();

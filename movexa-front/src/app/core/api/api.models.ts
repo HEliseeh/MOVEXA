@@ -403,10 +403,13 @@ export interface StaffAccount {
   firstName: string | null;
   lastName: string | null;
   email: string | null;
+  phone: string | null;
   activated: boolean;
   role: StaffRole;
   createdDate: string | null;
   lastModifiedDate: string | null;
+  /** Dernière connexion réussie (null : jamais connecté) */
+  lastLoginAt: string | null;
 }
 
 /** L'adresse e-mail sert à se connecter (le serveur en fait aussi l'identifiant) */
@@ -414,6 +417,7 @@ export interface CreateStaffPayload {
   firstName: string;
   lastName: string | null;
   email: string;
+  phone: string | null;
   role: StaffRole;
   password: string;
 }
@@ -422,6 +426,7 @@ export interface UpdateStaffPayload {
   firstName: string;
   lastName: string | null;
   email: string;
+  phone: string | null;
   role: StaffRole;
   activated: boolean;
 }
@@ -432,6 +437,10 @@ export interface NavCounts {
   prospectsToday: number;
   /** Abonnements qui finissent dans le seuil « expire bientôt » */
   expiringSoon: number;
+  /** Relances de membres à envoyer aujourd'hui */
+  remindersToSend?: number;
+  /** Liens de paiement envoyés, pas encore payés */
+  pendingLinks?: number;
 }
 
 // ---- Cours collectifs et planning (lot 5) ----

@@ -4,9 +4,10 @@ import { DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Reminder, ReminderChannel, ReminderQueueItem, ReminderStats } from '@core/api/api.models';
+import { CurrentUserStore } from '@core/auth/current-user.store';
 import { MovexaApi } from '@core/api/movexa-api.service';
 import { ToastService } from '@core/notifications/toast.service';
-import { apiError, dayHour, fcfa, frDate, RULE_LABELS, smsLink, whatsappLink } from '@shared/format';
+import { apiError, dayHour, fcfa, frDate, RULE_LABELS, shortDate, smsLink, whatsappLink } from '@shared/format';
 
 /**
  * Relances des membres (module 5) : ce qui fait gagner de l'argent.
@@ -22,6 +23,7 @@ import { apiError, dayHour, fcfa, frDate, RULE_LABELS, smsLink, whatsappLink } f
   styleUrl: './reminders.css',
 })
 export class Reminders implements OnInit {
+  readonly store = inject(CurrentUserStore);
   private readonly api = inject(MovexaApi);
   private readonly toast = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
@@ -32,6 +34,7 @@ export class Reminders implements OnInit {
   readonly fcfa = fcfa;
   readonly frDate = frDate;
   readonly dayHour = dayHour;
+  readonly shortDate = shortDate;
 
   readonly tab = signal<'selection' | 'queue' | 'history'>('queue');
   readonly queue = signal<ReminderQueueItem[]>([]);

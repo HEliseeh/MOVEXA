@@ -37,8 +37,8 @@
 }
 
 .st-rules .grid-row {
-  grid-template-columns: 1.6fr 1fr 80px 100px;
-  max-width: 680px;
+  grid-template-columns: 1.6fr 1fr 80px 100px 1.2fr;
+  max-width: 860px;
   padding-left: 0;
   padding-right: 0;
 }

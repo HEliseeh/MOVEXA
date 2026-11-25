@@ -1,11 +1,11 @@
-import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Coach, CoachPayload } from '@core/api/api.models';
+import { RouterLink } from '@angular/router';
+import { Coach, CoachPayload, Course } from '@core/api/api.models';
 import { MovexaApi } from '@core/api/movexa-api.service';
 import { CurrentUserStore } from '@core/auth/current-user.store';
 import { ToastService } from '@core/notifications/toast.service';
-import { FilterOption, matchesAny, MultiFilter } from '@shared/column-filter/column-filter';
 import { CoursesPanel } from './courses-panel/courses-panel';
 import { ConfirmDialog } from '@shared/confirm-dialog/confirm-dialog';
 import { apiError, initials, whatsappLink } from '@shared/format';
@@ -15,6 +15,8 @@ interface CoachDraft extends CoachPayload {
   id?: number;
   memberCount: number;
 }
+
+const AVATARS = ['#c3b5f7', '#fde3c0', '#e8f55a', '#cfe8e3', '#d6e8f7'];
 
 const EMPTY_DRAFT: CoachDraft = {
   firstName: '',
@@ -33,7 +35,7 @@ const EMPTY_DRAFT: CoachDraft = {
  */
 @Component({
   selector: 'app-coaches',
-  imports: [FormsModule, MultiFilter, ConfirmDialog, CoursesPanel],
+  imports: [FormsModule, RouterLink, ConfirmDialog, CoursesPanel],
   templateUrl: './coaches.html',
   styleUrl: './coaches.css',
 })
@@ -47,55 +49,37 @@ export class Coaches implements OnInit {
   readonly whatsappLink = whatsappLink;
 
   readonly coaches = signal<Coach[]>([]);
-  /** Onglet : cours collectifs ou équipe de coachs */
-  readonly tab = signal<'courses' | 'coaches'>('courses');
+  /** Cours collectifs (chargés par le panneau des cours) */
+  readonly courses = signal<Course[]>([]);
+  readonly panel = viewChild(CoursesPanel);
   readonly loading = signal(true);
   readonly loadError = signal<string | null>(null);
   /** Disciplines connues (suggestions du formulaire) */
   readonly knownDisciplines = signal<string[]>([]);
 
-  // ---- Filtres ----
-  readonly query = signal('');
-  readonly phoneQuery = signal('');
-  readonly disciplineFilter = signal<string[]>([]);
-  readonly statusFilter = signal<string[]>(['active']);
-  readonly statusOptions: FilterOption[] = [
-    { value: 'active', label: 'Actif' },
-    { value: 'inactive', label: 'Inactif' },
-  ];
+  readonly courseCount = computed(() => this.courses().filter(c => c.active).length);
+  readonly activeCoaches = computed(() => this.coaches().filter(c => c.active));
 
-  readonly disciplineOptions = computed<FilterOption[]>(() => {
-    const all = new Set<string>();
-    this.coaches().forEach(c => c.disciplines.forEach(d => all.add(d)));
-    return [...all].sort((a, b) => a.localeCompare(b, 'fr')).map(d => ({ value: d, label: d }));
+  /** Coachs (actifs d'abord) avec les cours qu'ils donnent et leurs séances de la semaine */
+  readonly coachRows = computed(() => {
+    const active = this.courses().filter(c => c.active);
+    return [...this.coaches()]
+      .sort((a, b) => Number(b.active) - Number(a.active) || this.fullName(a).localeCompare(this.fullName(b), 'fr'))
+      .map((c, i) => {
+        const names = new Set<string>();
+        let sessions = 0;
+        for (const course of active) {
+          for (const slot of course.slots) {
+            if ((slot.coachId ?? course.coachId) === c.id) {
+              sessions++;
+              names.add(course.name);
+            }
+          }
+          if (course.coachId === c.id) names.add(course.name);
+        }
+        return { c, courses: [...names], sessions, bg: AVATARS[i % AVATARS.length] };
+      });
   });
-
-  /** Disciplines et nombre de coachs actifs qui les enseignent (bandeau du haut) */
-  readonly disciplineSummary = computed(() => {
-    const counts = new Map<string, number>();
-    this.coaches()
-      .filter(c => c.active)
-      .forEach(c => c.disciplines.forEach(d => counts.set(d, (counts.get(d) ?? 0) + 1)));
-    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'fr'));
-  });
-
-  readonly rows = computed(() => {
-    const q = this.query().trim().toLowerCase();
-    const phone = this.phoneQuery().replace(/\D/g, '');
-    const disciplines = this.disciplineFilter();
-    const statuses = this.statusFilter();
-    return this.coaches().filter(
-      c =>
-        (!q || this.fullName(c).toLowerCase().includes(q)) &&
-        (!phone || (c.phone ?? '').replace(/\D/g, '').includes(phone)) &&
-        (disciplines.length === 0 || c.disciplines.some(d => disciplines.includes(d))) &&
-        matchesAny(statuses, c.active ? 'active' : 'inactive'),
-    );
-  });
-
-  readonly hasFilters = computed(
-    () => !!this.query().trim() || !!this.phoneQuery().trim() || this.disciplineFilter().length > 0 || this.statusFilter().join() !== 'active',
-  );
 
   // ---- Pop-up ----
   readonly draft = signal<CoachDraft | null>(null);
@@ -136,17 +120,6 @@ export class Coaches implements OnInit {
 
   fullName(c: { firstName: string; lastName: string | null }): string {
     return `${c.firstName} ${c.lastName ?? ''}`.trim();
-  }
-
-  resetFilters(): void {
-    this.query.set('');
-    this.phoneQuery.set('');
-    this.disciplineFilter.set([]);
-    this.statusFilter.set(['active']);
-  }
-
-  filterOn(discipline: string): void {
-    this.disciplineFilter.set([discipline]);
   }
 
   // ---- Création / modification ----

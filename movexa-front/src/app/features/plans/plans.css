@@ -1,61 +1,88 @@
+/* Formules et tarifs (maquette « Formules et tarifs ») */
+.pl-page {
+  gap: 28px;
+}
+
 .pl-header {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: var(--space-4);
+  gap: 16px;
 }
 
 .pl-sub {
   margin: 4px 0 0;
 }
 
-.pl-alert {
-  margin: var(--space-4) var(--space-5) 0;
+.pl-new,
+.pl-save,
+.pl-soft {
+  height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: #12262a;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pl-soft {
+  padding: 0 18px;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.pl-save:disabled,
+.pl-soft:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .pl-body {
-  padding: var(--space-5);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
-  gap: var(--space-5);
-  align-items: start;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 44px;
 }
 
-@media (max-width: 960px) {
-  .pl-body {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-/* ---- Cartes des formules ---- */
 .pl-cards {
+  flex: 1 1 520px;
+  min-width: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
 }
 
 .pl-card {
-  padding: var(--space-5);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  min-height: 190px;
+  padding: 20px;
+  border: 0;
+  border-radius: 18px;
   background: var(--color-surface);
-  color: var(--color-text);
+  color: #15201f;
   font: inherit;
   text-align: left;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   cursor: pointer;
 }
 
 .pl-card:hover {
-  border-color: var(--color-text-muted);
+  box-shadow: 0 0 0 1px var(--color-border);
+}
+
+.pl-card:focus-visible {
+  outline: 2px solid #2c7a7b;
+  outline-offset: 2px;
 }
 
 .pl-card--on {
-  box-shadow: inset 0 0 0 2px #12262a;
-  border-color: #12262a;
+  background: var(--ds-pastel-lavender);
 }
 
 .pl-card--off {
@@ -64,77 +91,102 @@
 
 .pl-card-head {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
   gap: 8px;
 }
 
 .pl-name {
-  font-weight: var(--font-weight-bold);
-  font-size: 16px;
-}
-
-.pl-price {
-  font-size: 26px;
-  font-weight: var(--font-weight-black);
-}
-
-.pl-tag {
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 11px;
+  font-size: 17px;
   font-weight: 600;
+}
+
+.pl-state {
+  font-size: 12px;
+  color: var(--color-text-muted);
   white-space: nowrap;
 }
 
-.pl-tag--best {
-  background: var(--ds-pastel-peach, #fde3c0);
-  color: #12262a;
+.pl-card--on .pl-state {
+  color: #15201f;
 }
 
-.pl-acts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+.pl-price {
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 
-.pl-chip {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--color-surface-raised, #f2f5f4);
-  border: 1px solid var(--color-border);
-  font-size: 12px;
+.pl-duration {
+  font-size: 13px;
+  color: #3a4644;
 }
 
-.pl-card-foot {
+.pl-usage {
   margin-top: auto;
-  padding-top: 6px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 /* ---- Panneau d'édition ---- */
 .pl-editor {
-  padding: var(--space-5);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  flex: 1 1 320px;
+  min-width: 0;
+  max-width: 420px;
+  padding: 24px;
+  border-radius: 24px;
   background: var(--color-surface);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 18px;
 }
 
-.pl-editor .card-title {
-  margin: 0;
+.pl-kicker {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.pl-edit-name {
+  margin: 2px 0 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.pl-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pl-field label,
+.pl-fieldset legend {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Champs pleins de la maquette (fond gris, coins arrondis) */
+.pl-input {
+  width: 100%;
+  height: 50px;
+  box-sizing: border-box;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--color-bg);
+  color: #15201f;
+  font: inherit;
+  font-size: 15px;
+}
+
+.pl-input:focus {
+  outline: 2px solid #2c7a7b;
+  outline-offset: 0;
 }
 
 .pl-pair {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: var(--space-4);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .pl-fieldset {
@@ -143,35 +195,61 @@
   border: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 10px;
 }
 
 .pl-fieldset legend {
-  margin-bottom: 6px;
-  font-weight: 600;
+  margin-bottom: 8px;
+  padding: 0;
 }
 
-.pl-label {
-  display: block;
+.pl-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
 }
 
-.pl-freeze {
-  align-items: flex-start;
+.pl-check input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #12262a;
+}
+
+.pl-fee {
+  padding-left: 28px;
 }
 
 .pl-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: 10px;
+}
+
+.pl-save {
+  flex: 1 1 auto;
+}
+
+.pl-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
 
 /* ---- Activités de la salle ---- */
 .pl-activities {
-  padding: 0 var(--space-5) var(--space-5);
+  padding: 24px;
+  border-radius: 24px;
+  background: var(--color-surface);
+}
+
+.pl-activities .help {
+  margin: 4px 0 0;
 }
 
 .pl-act-list {
-  margin: var(--space-3, 12px) 0;
+  margin: 12px 0;
   padding: 0;
   list-style: none;
   max-width: 720px;
@@ -182,8 +260,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3, 12px);
-  border-bottom: 1px solid var(--color-border-soft, var(--color-border));
+  gap: 12px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .pl-act--off {
@@ -193,7 +271,7 @@
 .pl-act-btns {
   margin-left: auto;
   display: flex;
-  gap: var(--space-3, 12px);
+  gap: 12px;
 }
 
 .pl-act-input {
@@ -204,7 +282,7 @@
 .pl-act-add {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3, 12px);
+  gap: 12px;
   max-width: 720px;
 }
 
@@ -220,4 +298,10 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .pl-editor {
+    max-width: none;
+  }
 }

@@ -30,8 +30,8 @@
 }
 
 .sa-list .grid-row {
-  grid-template-columns: 1.4fr 1fr 1fr 0.8fr auto;
-  min-width: 680px;
+  grid-template-columns: 1.6fr 0.9fr 1fr 1.1fr 0.8fr auto;
+  min-width: 860px;
 }
 
 .sa-perms .grid-row {
@@ -119,4 +119,15 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+.sa-person {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sa-person .sa-login {
+  font-size: 13px;
+  color: var(--color-text-muted);
 }

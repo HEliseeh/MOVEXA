@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { ImportResult, ImportRow } from '@core/api/api.models';
 import { MovexaApi } from '@core/api/movexa-api.service';
 import { apiError, frDate } from '@shared/format';
+import { readXlsx } from '@shared/xlsx';
 
 /** Champ MOVEXA associé à une colonne du fichier */
 type Field = 'fullName' | 'firstName' | 'lastName' | 'phone' | 'planName' | 'endDate' | 'ignore';
@@ -72,27 +73,45 @@ export class MemberImport {
     return c.ready + (this.updateExisting() ? c.lines.filter(l => l.status === 'DUPLICATE' && l.message.startsWith('Doublon : déjà')).length : 0);
   });
 
+  /** Zone de dépôt survolée par un fichier */
+  readonly dragging = signal(false);
+
   onFile(event: Event): void {
-    const file = (event.target as HTMLInputElement).files?.[0];
-    if (!file) return;
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) void this.load(file);
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    this.dragging.set(false);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) void this.load(file);
+  }
+
+  /** Lit un fichier Excel (.xlsx) ou CSV, puis passe à l'association des colonnes */
+  private async load(file: File): Promise<void> {
     this.error.set(null);
-    if (/\.xlsx?$/i.test(file.name)) {
-      this.error.set('Fichier Excel : ouvrez-le puis « Enregistrer sous » au format CSV, et choisissez ce fichier CSV.');
+    if (/\.xls$/i.test(file.name)) {
+      this.error.set('Ancien format Excel (.xls) : ouvrez-le puis « Enregistrer sous » au format .xlsx ou CSV.');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const rows = parseCsv(String(reader.result ?? ''));
-      if (rows.length < 2) {
-        this.error.set('Le fichier semble vide : il faut une ligne d’en-tête puis au moins une ligne de membre.');
-        return;
-      }
-      this.fileName.set(file.name);
-      this.rows.set(rows);
-      this.columns.set(rows[0].map((header, index) => ({ index, header: header || `Colonne ${index + 1}`, example: rows[1][index] ?? '', field: guessField(header) })));
-      this.step.set(2);
-    };
-    reader.readAsText(file, 'utf-8');
+    let rows: string[][];
+    try {
+      rows = /\.xlsx$/i.test(file.name) ? await readXlsx(file) : parseCsv(await file.text());
+    } catch {
+      this.error.set('Ce fichier n’a pas pu être lu. Enregistrez-le au format .xlsx ou CSV, puis réessayez.');
+      return;
+    }
+    if (rows.length < 2) {
+      this.error.set('Le fichier semble vide : il faut une ligne d’en-tête puis au moins une ligne de membre.');
+      return;
+    }
+    this.fileName.set(file.name);
+    this.rows.set(rows);
+    this.columns.set(rows[0].map((header, index) => ({ index, header: header || `Colonne ${index + 1}`, example: rows[1][index] ?? '', field: guessField(header) })));
+    this.step.set(2);
   }
 
   setField(index: number, field: Field): void {

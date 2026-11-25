@@ -17,6 +17,8 @@ export class NavCountsService {
   private readonly api = inject(MovexaApi);
   private readonly store = inject(CurrentUserStore);
   private readonly counts = signal<NavCounts | null>(null);
+  /** Tous les compteurs (cloche et enveloppe de la barre du haut) */
+  readonly all = this.counts.asReadonly();
 
   constructor() {
     inject(Router)
