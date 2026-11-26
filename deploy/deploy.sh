@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-TARGET="${1:-all}" # all | movexa-back1 | movexa-gateway | movexa-front
+TARGET="${1:-all}" # all | flexclubmanagement-back1 | flexclubmanagement-gateway | flexclubmanagement-front
 
 if [ ! -f "$ROOT/deploy/.env" ]; then
   echo "deploy/.env manquant : copiez deploy/.env.example en deploy/.env et remplissez-le." >&2
@@ -11,20 +11,22 @@ fi
 
 build_jhipster() { # $1 = dossier du projet
   echo ">>> Build de $1"
-  (cd "$ROOT/$1" && ./mvnw -ntp -Pprod verify jib:dockerBuild -DskipTests)
+  # clean : on recompile tout avec javac. Sans lui, Maven peut réutiliser des classes
+  # compilées par l'éditeur (VS Code / Eclipse), qui plantent au démarrage sous Java 25.
+  (cd "$ROOT/$1" && ./mvnw -ntp clean -Pprod verify jib:dockerBuild -DskipTests)
 }
 
 build_frontend() {
   echo ">>> Build du frontend"
-  docker build -t movexa-frontend "$ROOT/movexa-front"
+  docker build -t flexclubmanagement-frontend "$ROOT/flexclubmanagement-front"
 }
 
 case "$TARGET" in
-  movexa-back1)  build_jhipster movexa-back1 ;;
-  movexa-gateway)  build_jhipster movexa-gateway ;;
-  movexa-front) build_frontend ;;
-  all)      build_jhipster movexa-gateway; build_jhipster movexa-back1; build_frontend ;;
-  *) echo "Usage: $0 [all | movexa-back1 | movexa-gateway | movexa-front]"; exit 1;;
+  flexclubmanagement-back1)  build_jhipster flexclubmanagement-back1 ;;
+  flexclubmanagement-gateway)  build_jhipster flexclubmanagement-gateway ;;
+  flexclubmanagement-front) build_frontend ;;
+  all)      build_jhipster flexclubmanagement-gateway; build_jhipster flexclubmanagement-back1; build_frontend ;;
+  *) echo "Usage: $0 [all | flexclubmanagement-back1 | flexclubmanagement-gateway | flexclubmanagement-front]"; exit 1;;
 esac
 cd "$ROOT/deploy"
 docker compose --env-file .env up -d

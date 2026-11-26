@@ -1,0 +1,37 @@
+@use '@angular/material' as mat;
+
+// ============================================================
+// THÈME FLEXCLUBMANAGEMENT — Material 3, mode clair
+// Fond papier, navy pour le texte, sable pour l'action principale.
+// Les couleurs de référence sont dans src/styles/tokens.css.
+// ============================================================
+
+html {
+  @include mat.theme((
+    color: (
+      primary:    mat.$orange-palette,
+      theme-type: light,
+    ),
+    typography: Outfit,
+    density: -1,
+  ));
+}
+
+// ---- Surcharges CSS pour coller aux tokens Flexclubmanagement ----
+html {
+  --mat-sys-primary:            #c8a47e;
+  --mat-sys-on-primary:         #1e2336;
+  --mat-sys-surface:            #ffffff;
+  --mat-sys-on-surface:         #1e2336;
+  --mat-sys-on-surface-variant: #5c6275;
+  --mat-sys-outline:            #8a8f9c;
+  --mat-sys-outline-variant:    #ddd9d1;
+}
+
+body {
+  color-scheme: light;
+  background-color: var(--color-bg, #efede8);
+  color: var(--color-text, #1e2336);
+  font-family: var(--font-family-base, 'Outfit', system-ui, sans-serif);
+  margin: 0;
+}
