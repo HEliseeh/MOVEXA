@@ -1,11 +1,11 @@
-# MOVEXA
+# FLEXCLUBMANAGEMENT
 
-Script de deploiement des entités de movexa
+Script de deploiement des entités de flexclubmanagement
 
 
 ##Structures
 
-movexa/
+flexclubmanagement/
   |
   |---- registry/
   |      |__ central-server-config/application.yml

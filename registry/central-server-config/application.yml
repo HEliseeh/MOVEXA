@@ -1,5 +1,5 @@
 configserver:
-  name: Movexa JHipster Registry
+  name: FlexClubManagement JHipster Registry
 jhipster:
   security:
     authentication:
