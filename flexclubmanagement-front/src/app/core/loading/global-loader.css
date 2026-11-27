@@ -1,68 +1,247 @@
-/* Au-dessus des pop-ups (pour bloquer leurs boutons), sous les toasts (messages de résultat) */
+/*
+ * Voile de chargement (maquette « Flex Club · Chargement ») :
+ * fond ardoise flouté + barre de musculation qui se charge puis se soulève.
+ * Au-dessus des pop-ups (pour bloquer leurs boutons), sous les toasts (messages de résultat).
+ */
 .gl {
   position: fixed;
   inset: 0;
   z-index: calc(var(--z-modal) + 50);
-  display: grid;
-  place-items: center;
-  cursor: progress;
-  background: transparent;
-  transition: background-color 200ms ease;
-}
-
-.gl--visible {
-  background: color-mix(in srgb, var(--color-surface, #fff) 55%, transparent);
-  backdrop-filter: blur(1px);
-}
-
-.gl-box {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 18px;
-  border-radius: var(--radius-sm, 8px);
-  background: var(--color-surface-raised, #fff);
-  box-shadow: var(--shadow-sm, 0 2px 8px rgb(0 0 0 / 12%));
-  color: var(--color-text);
-  font-weight: 500;
-  animation: gl-in 200ms ease both;
+  justify-content: center;
+  cursor: progress;
+  background: transparent;
+  font-family: var(--font-family-ds, 'Outfit', system-ui, sans-serif);
+  color: #fff;
+  transition: background-color 250ms ease-out, backdrop-filter 250ms ease-out;
 }
 
-.gl-spinner {
-  width: 22px;
-  height: 22px;
-  flex: none;
-  border-radius: 50%;
-  border: 3px solid color-mix(in srgb, var(--color-primary, #2563eb) 22%, transparent);
-  border-top-color: var(--color-primary, #2563eb);
-  animation: gl-spin 0.8s linear infinite;
+/* Tant que l'opération est courte (< 300 ms), le voile reste transparent mais bloque déjà les clics */
+.gl--visible {
+  background: color-mix(in srgb, var(--ds-hero, #12262a) 48%, transparent);
+  backdrop-filter: blur(3px);
 }
 
+/* ---- Boîte centrale ---- */
+.gl-box {
+  width: 260px;
+  height: 96px;
+  border-radius: 18px;
+  background: var(--ds-hero, #12262a);
+  box-shadow: 0 24px 60px color-mix(in srgb, var(--ds-hero, #12262a) 35%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  animation: gl-box-in 350ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+/* ---- Barre : manchons, disques, butées, poignée ---- */
+.gl-bar {
+  display: flex;
+  align-items: center;
+  animation: gl-lift 2.4s ease-in-out infinite;
+}
+
+.gl-sleeve {
+  width: 14px;
+  height: 6px;
+  background: #d6e3e1;
+}
+.gl-sleeve--left {
+  border-radius: 3px 0 0 3px;
+}
+.gl-sleeve--right {
+  border-radius: 0 3px 3px 0;
+}
+
+.gl-collar {
+  width: 6px;
+  height: 16px;
+  border-radius: 2px;
+  background: #b8cbc8;
+}
+
+.gl-grip {
+  width: 96px;
+  height: 6px;
+  /* Moletage de la poignée */
+  background: repeating-linear-gradient(90deg, #d6e3e1 0 4px, #b8cbc8 4px 6px);
+}
+
+/* Disques : du plus gros (1, près de la poignée) au plus petit (3, à l'extérieur) */
+.gl-plate {
+  border-radius: 4px;
+  opacity: 0;
+  animation-duration: 2.4s;
+  animation-iteration-count: infinite;
+  animation-timing-function: cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.gl-left {
+  --dx: -26px;
+}
+.gl-right {
+  --dx: 26px;
+}
+.gl-plate--1 {
+  width: 14px;
+  height: 58px;
+  background: var(--ds-pastel-lime, #e8f55a);
+  animation-name: gl-plate-1;
+}
+.gl-plate--2 {
+  width: 12px;
+  height: 46px;
+  background: var(--ds-pastel-peach, #fde3c0);
+  animation-name: gl-plate-2;
+}
+.gl-plate--3 {
+  width: 10px;
+  height: 34px;
+  background: var(--ds-pastel-lavender, #c3b5f7);
+  animation-name: gl-plate-3;
+}
+.gl-left.gl-plate--2,
+.gl-left.gl-plate--3 {
+  margin-right: 2px;
+}
+.gl-right.gl-plate--2,
+.gl-right.gl-plate--3 {
+  margin-left: 2px;
+}
+
+/* ---- Texte « Un instant... » avec points qui sautillent ---- */
 .gl-text {
-  max-width: 280px;
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 48px;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 1px;
+  font-size: 17px;
+  font-weight: 500;
+  text-align: center;
 }
 
-@keyframes gl-spin {
-  to {
-    transform: rotate(360deg);
-  }
+.gl-dot {
+  display: inline-block;
+  animation: gl-dot 1.2s ease-in-out infinite;
+}
+.gl-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.gl-dot:nth-child(3) {
+  animation-delay: 0.3s;
 }
 
-@keyframes gl-in {
+/* ---- Animations (cycle de 2,4 s) ---- */
+@keyframes gl-box-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
+/* Chaque disque glisse depuis l'extérieur à son tour, reste, puis tous repartent ensemble */
+@keyframes gl-plate-1 {
+  0% {
+    opacity: 0;
+    transform: translateX(var(--dx));
+  }
+  12%,
+  82% {
+    opacity: 1;
+    transform: none;
+  }
+  92%,
+  100% {
+    opacity: 0;
+    transform: translateX(var(--dx));
+  }
+}
+@keyframes gl-plate-2 {
+  0%,
+  12% {
+    opacity: 0;
+    transform: translateX(var(--dx));
+  }
+  24%,
+  82% {
+    opacity: 1;
+    transform: none;
+  }
+  92%,
+  100% {
+    opacity: 0;
+    transform: translateX(var(--dx));
+  }
+}
+@keyframes gl-plate-3 {
+  0%,
+  24% {
+    opacity: 0;
+    transform: translateX(var(--dx));
+  }
+  36%,
+  82% {
+    opacity: 1;
+    transform: none;
+  }
+  92%,
+  100% {
+    opacity: 0;
+    transform: translateX(var(--dx));
+  }
+}
+
+/* Barre chargée : on la soulève, on la tient, on la repose */
+@keyframes gl-lift {
+  0%,
+  40% {
+    transform: translateY(0);
+  }
+  55%,
+  68% {
+    transform: translateY(-14px);
+  }
+  80%,
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes gl-dot {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* Animations réduites : barre chargée immobile */
 @media (prefers-reduced-motion: reduce) {
-  .gl,
-  .gl-box {
+  .gl {
     transition: none;
+  }
+  .gl-box,
+  .gl-bar,
+  .gl-dot {
     animation: none;
   }
-
-  .gl-spinner {
-    animation-duration: 2s;
+  .gl-plate {
+    animation: none;
+    opacity: 1;
   }
 }

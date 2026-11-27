@@ -13,12 +13,31 @@ import { LoadingService } from './loading.service';
   selector: 'app-global-loader',
   template: `
     @if (loading.busy() || loading.visible()) {
-      <div class="gl" [class.gl--visible]="loading.visible()" role="status" aria-live="polite" [attr.aria-busy]="loading.busy()">
+      <div class="gl" [class.gl--visible]="loading.visible()" [attr.aria-busy]="loading.busy()">
         @if (loading.visible()) {
-          <div class="gl-box">
-            <span class="gl-spinner" aria-hidden="true"></span>
-            <span class="gl-text">{{ loading.slow() ? 'Ça prend plus de temps que prévu… (connexion lente ?)' : 'Chargement…' }}</span>
+          <!-- Barre de musculation : les disques se chargent un à un de chaque côté, puis la barre se soulève -->
+          <div class="gl-box" aria-hidden="true">
+            <div class="gl-bar">
+              <span class="gl-sleeve gl-sleeve--left"></span>
+              <span class="gl-plate gl-plate--3 gl-left"></span>
+              <span class="gl-plate gl-plate--2 gl-left"></span>
+              <span class="gl-plate gl-plate--1 gl-left"></span>
+              <span class="gl-collar"></span>
+              <span class="gl-grip"></span>
+              <span class="gl-collar"></span>
+              <span class="gl-plate gl-plate--1 gl-right"></span>
+              <span class="gl-plate gl-plate--2 gl-right"></span>
+              <span class="gl-plate gl-plate--3 gl-right"></span>
+              <span class="gl-sleeve gl-sleeve--right"></span>
+            </div>
           </div>
+          <p class="gl-text" role="status" aria-live="polite">
+            @if (loading.slow()) {
+              Ça prend plus de temps que prévu (connexion lente ?)
+            } @else {
+              Un instant
+            }<span class="gl-dot">.</span><span class="gl-dot">.</span><span class="gl-dot">.</span>
+          </p>
         }
       </div>
     }
