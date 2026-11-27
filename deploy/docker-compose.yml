@@ -2,13 +2,13 @@ services:
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_USER: movexa
+      POSTGRES_USER: flexclubmanagement
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U movexa"]
+      test: ["CMD-SHELL", "pg_isready -U flexclubmanagement"]
       interval: 5s
       retries: 10
 
@@ -31,7 +31,7 @@ services:
       - "8761:8761"
 
   backend:
-    image: movexa-back1:latest
+    image: flexclubmanagement-back1:latest
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_started }
@@ -40,15 +40,15 @@ services:
       - SPRING_PROFILES_ACTIVE=prod
       - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://admin:${REGISTRY_PASSWORD}@jhipster-registry:8761/eureka/
       - SPRING_CLOUD_CONFIG_URI=http://admin:${REGISTRY_PASSWORD}@jhipster-registry:8761/config
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/movexaback1
-      - SPRING_DATASOURCE_USERNAME=movexa
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/flexclubmanagementback1
+      - SPRING_DATASOURCE_USERNAME=flexclubmanagement
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
-      - SPRING_LIQUIBASE_URL=jdbc:postgresql://postgres:5432/movexaback1
+      - SPRING_LIQUIBASE_URL=jdbc:postgresql://postgres:5432/flexclubmanagementback1
       - JHIPSTER_CACHE_REDIS_SERVER=redis://redis:6379
       - JWT_BASE64_SECRET=${JWT_BASE64_SECRET:?JWT_BASE64_SECRET manquant dans deploy/.env}
 
   gateway:
-    image: movexa-gateway:latest
+    image: flexclubmanagement-gateway:latest
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_started }
@@ -59,16 +59,16 @@ services:
       - SPRING_CLOUD_CONFIG_URI=http://admin:${REGISTRY_PASSWORD}@jhipster-registry:8761/config
       # Connexion réactive (utilisée par l'application)
       - SPRING_R2DBC_URL=r2dbc:postgresql://postgres:5432/gateway
-      - SPRING_R2DBC_USERNAME=movexa
+      - SPRING_R2DBC_USERNAME=flexclubmanagement
       - SPRING_R2DBC_PASSWORD=${DB_PASSWORD}
       # Connexion JDBC (utilisée uniquement par Liquibase pour les migrations)
       - SPRING_LIQUIBASE_URL=jdbc:postgresql://postgres:5432/gateway
-      - SPRING_LIQUIBASE_USER=movexa
+      - SPRING_LIQUIBASE_USER=flexclubmanagement
       - SPRING_LIQUIBASE_PASSWORD=${DB_PASSWORD}
       - JHIPSTER_CACHE_REDIS_SERVER=redis://redis:6379
       - JWT_BASE64_SECRET=${JWT_BASE64_SECRET:?JWT_BASE64_SECRET manquant dans deploy/.env}
       # Mot de passe du compte admin au premier démarrage (ignoré une fois changé)
-      - MOVEXA_ADMIN_INITIAL_PASSWORD=${MOVEXA_ADMIN_INITIAL_PASSWORD:-}
+      - FLEXCLUBMANAGEMENT_ADMIN_INITIAL_PASSWORD=${FLEXCLUBMANAGEMENT_ADMIN_INITIAL_PASSWORD:-}
       # E-mails (« Mot de passe oublié ») : Mailpit par défaut (boîte de test), un vrai SMTP en production
       - SPRING_MAIL_HOST=${MAIL_HOST:-mailpit}
       - SPRING_MAIL_PORT=${MAIL_PORT:-1025}
@@ -76,7 +76,7 @@ services:
       - SPRING_MAIL_PASSWORD=${MAIL_PASSWORD:-}
       - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=${MAIL_SMTP_AUTH:-false}
       - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=${MAIL_STARTTLS:-false}
-      - JHIPSTER_MAIL_FROM=${MAIL_FROM:-no-reply@movexa.local}
+      - JHIPSTER_MAIL_FROM=${MAIL_FROM:-no-reply@flexclubmanagement.local}
       # Adresse publique de l'application : les liens des e-mails pointent vers elle
       - JHIPSTER_MAIL_BASE_URL=${APP_URL:-http://localhost}
 
@@ -88,7 +88,7 @@ services:
       - "127.0.0.1:8025:8025"
 
   frontend:
-    image: movexa-frontend:latest
+    image: flexclubmanagement-frontend:latest
     depends_on: [gateway]
     ports:
       - "80:80"

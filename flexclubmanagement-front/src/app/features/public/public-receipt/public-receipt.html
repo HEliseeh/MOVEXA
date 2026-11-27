@@ -1,0 +1,45 @@
+<main class="pub">
+  @if (error(); as e) {
+    <p class="pub-error" role="alert">{{ e }}</p>
+  }
+  @if (receipt(); as r) {
+    <article class="pub-card" aria-labelledby="pr-title">
+      <div class="pub-head">
+        <span class="pub-head-name">{{ r.gymName || 'Votre salle' }}</span>
+        @if (r.gymAddress || r.gymPhone) {
+          <span class="pub-muted">{{ r.gymAddress || '' }}{{ r.gymAddress && r.gymPhone ? ' · ' : '' }}{{ r.gymPhone || '' }}</span>
+        }
+      </div>
+      <div class="pub-body">
+        <div class="pub-title-row">
+          <div>
+            <h1 id="pr-title" class="pub-title">Reçu de paiement</h1>
+            <p class="pub-meta">N° {{ r.number }} · {{ dayHour(r.paidAt) }}</p>
+          </div>
+          <span class="pub-stamp" [class.pub-stamp--ko]="r.status === 'CANCELLED'">{{ r.status === 'CANCELLED' ? 'ANNULÉ' : 'PAYÉ' }}</span>
+        </div>
+        <div class="pub-amount">
+          <div class="pub-meta">Montant</div>
+          <div class="pub-amount-value">{{ fcfa(r.amount) }}</div>
+          @if (r.registrationFee) { <div class="pub-meta">dont {{ fcfa(r.registrationFee) }} de frais d’inscription</div> }
+        </div>
+        <dl class="pub-lines">
+          <dt>Membre</dt><dd><b>{{ r.memberName }}</b></dd>
+          @if (r.planName) { <dt>Formule</dt><dd>{{ r.planName }}</dd> }
+          @if (r.validFrom) { <dt>Valable</dt><dd>du {{ frDate(r.validFrom) }} au {{ frDate(r.validTo) }}</dd> }
+          <dt>Moyen</dt><dd>{{ methodLabels[r.method] }}</dd>
+          @if (r.agent) { <dt>Encaissé par</dt><dd>{{ r.agent }}</dd> }
+        </dl>
+        <p class="pub-text pub-small">{{ r.footer || '' }} Reçu généré avec FLEXCLUBMANAGEMENT.</p>
+      </div>
+    </article>
+    <div class="pub-actions">
+      <button type="button" class="pub-btn" (click)="print()">Enregistrer en PDF</button>
+      @if (r.cardToken) {
+        <a class="pub-btn pub-btn--outline" [routerLink]="['/carte', r.cardToken]">Mon QR code</a>
+      }
+    </div>
+  } @else if (!error()) {
+    <p class="pub-meta" role="status">Chargement…</p>
+  }
+</main>
